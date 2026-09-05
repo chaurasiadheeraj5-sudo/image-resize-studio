@@ -1,4 +1,4 @@
-    /** SECURITY: filename sanitization **/
+/** SECURITY: filename sanitization **/
     // Strips path separators, control characters and OS-reserved characters from any
     // filename derived from user input (uploaded file names or prompt() text) before
     // it is used as a download filename or a ZIP entry name.
@@ -18,13 +18,13 @@
     /** STATE MANAGEMENT **/
     const app = {
         mode: 'merge', // merge or resize
-        resizeFiles: [], mergePics: [], mergeSigs: [], failedItems: [], previewTimeout: null, selectedResizeId: null,
+        resizeFiles: [], mergePics: [], mergeSigs: [], failedItems: [], previewTimeout: null, selectedResizeId: null, previewGen: 0,
         settings: {
             mode: 'merge', showSettings: true,
             rUnit: 'px', rW: '', rH: '', rLock: true, rPreset: 'custom',
             pUnit: 'px', pW: '', pH: '', pLock: true,
             sUnit: 'px', sW: '', sH: '', sLock: true,
-            outFmt: 'jpeg', outDPI: 300, outQual: 100, outTarget: ''
+            outFmt: 'jpeg', outDPI: 300, outQual: 90, outTarget: ''
         }
     };
 
@@ -349,6 +349,37 @@
     /** LIVE PREVIEW **/
     function queuePreview() { clearTimeout(app.previewTimeout); app.previewTimeout = setTimeout(() => requestAnimationFrame(renderPreview), 50); }
 
+    // Mirrors expBlob()'s quality/downscale search used at export time, but also
+    // reports the resulting width/height so the live preview can show an accurate
+    // estimate when a Target Size (KB) is set.
+    async function estimateTargetFit(canvas, type, s) {
+        const tkb = parseFloat(s.outTarget);
+        if (!((type === 'image/jpeg' || type === 'image/webp') && !isNaN(tkb) && tkb > 0)) return null;
+        const tb = tkb * 1024;
+        const chk = (c, q) => new Promise(r => c.toBlob(r, type, q));
+        let mn = 0.0, mx = 1.0, bst = null;
+        let f = await chk(canvas, 1.0);
+        if (f.size <= tb) return { w: canvas.width, h: canvas.height, size: f.size };
+        for (let i = 0; i < 7; i++) {
+            let m = (mn + mx) / 2; let t = await chk(canvas, m);
+            if (t.size > tb) mx = m; else { mn = m; bst = t; }
+        }
+        let best = bst || await chk(canvas, mn);
+        if (best.size > tb) {
+            let scale = 0.85; const tmpC = document.createElement('canvas'); const tmpCtx = tmpC.getContext('2d');
+            let lastFit = best; let lastW = canvas.width, lastH = canvas.height;
+            while (lastFit.size > tb && scale > 0.1) {
+                tmpC.width = Math.max(1, Math.round(canvas.width * scale)); tmpC.height = Math.max(1, Math.round(canvas.height * scale));
+                tmpCtx.drawImage(canvas, 0, 0, tmpC.width, tmpC.height);
+                lastFit = await chk(tmpC, 0.4); lastW = tmpC.width; lastH = tmpC.height;
+                scale -= 0.15;
+            }
+            tmpC.width = 0; tmpC.height = 0;
+            return { w: lastW, h: lastH, size: lastFit.size };
+        }
+        return { w: canvas.width, h: canvas.height, size: best.size };
+    }
+
     function renderPreview() {
         const s = app.settings; let w=0, h=0;
         if (app.mode === 'resize') {
@@ -386,13 +417,54 @@
                 drawHQ(D.prevCtx, app.mergeSigs[0].img, 0, 0, w*scale, h*scale);
             }
         }
+
         D.mDim.innerText = `${w} × ${h} px`;
-        setTimeout(() => {
-            let t = s.outFmt==='png'?'image/png':(s.outFmt==='jpg'?'image/jpeg':(s.outFmt==='webp'?'image/webp':'image/jpeg')); let q = (parseFloat(s.outQual)||100)/100;
-            D.mSize.innerText = `Est Size: ~${Math.round((D.prevCanvas.toDataURL(t,q).length*3/4)/1024)} KB`;
-        }, 10);
+
+        const type = s.outFmt==='png'?'image/png':(s.outFmt==='jpg'?'image/jpeg':(s.outFmt==='webp'?'image/webp':'image/jpeg'));
+        const tkb = parseFloat(s.outTarget);
+        const gen = ++app.previewGen;
+
+        if ((type==='image/jpeg'||type==='image/webp') && !isNaN(tkb) && tkb>0) {
+            // Build a full-resolution offscreen render (matching real export size) so the
+            // target-size search below produces an accurate size/dimension estimate.
+            const fullCanvas = document.createElement('canvas'); fullCanvas.width = w; fullCanvas.height = h;
+            const fctx = fullCanvas.getContext('2d');
+            fctx.fillStyle = '#FFFFFF'; fctx.fillRect(0,0,w,h);
+            if (app.mode === 'resize') {
+                const selImg = app.resizeFiles.find(f => f.id === app.selectedResizeId) || app.resizeFiles[0];
+                drawHQ(fctx, selImg.img, 0, 0, w, h);
+            } else {
+                let d = getMergeDim(s, app.mergePics[0], app.mergeSigs[0]);
+                let hasPic = !!app.mergePics[0]; let hasSig = !!app.mergeSigs[0];
+                if (hasPic && hasSig) {
+                    let picDx = (d.fw - d.standalonePicW) / 2; let sigDx = (d.fw - d.standaloneSigW) / 2;
+                    drawHQ(fctx, app.mergePics[0].img, picDx, 0, d.standalonePicW, d.standalonePicH);
+                    drawHQ(fctx, app.mergeSigs[0].img, sigDx, d.standalonePicH, d.standaloneSigW, d.standaloneSigH);
+                } else if (hasPic) {
+                    drawHQ(fctx, app.mergePics[0].img, 0, 0, w, h);
+                } else {
+                    drawHQ(fctx, app.mergeSigs[0].img, 0, 0, w, h);
+                }
+            }
+            D.mSize.innerText = `Estimating...`;
+            estimateTargetFit(fullCanvas, type, s).then(est => {
+                fullCanvas.width = 0; fullCanvas.height = 0;
+                if (gen !== app.previewGen) return; // a newer preview superseded this one
+                if (est) {
+                    D.mDim.innerText = `Est: ${est.w} × ${est.h} px`;
+                    D.mSize.innerText = `Est Size: ~${Math.round(est.size/1024)} KB (target ${Math.round(tkb)} KB)`;
+                }
+            });
+        } else {
+            setTimeout(() => {
+                if (gen !== app.previewGen) return;
+                let q = (parseFloat(s.outQual)||90)/100;
+                D.mSize.innerText = `Est Size: ~${Math.round((D.prevCanvas.toDataURL(type,q).length*3/4)/1024)} KB`;
+            }, 10);
+        }
     }
     function resetPreview() { D.prevCtx.clearRect(0,0,D.prevCanvas.width,D.prevCanvas.height); D.prevPlace.style.display='flex'; D.prevCanvas.style.opacity='0'; D.prevMeta.style.display='none'; }
+
 
     /** PROCESSING & EXPORT (WITH CUSTOM PROMPTS) **/
     let outBlobs = [];
@@ -521,7 +593,7 @@
                     }
                     res(best); 
                 }; srch(canvas);
-            } else { canvas.toBlob(res, type, (parseFloat(s.outQual)||100)/100); }
+            } else { canvas.toBlob(res, type, (parseFloat(s.outQual)||90)/100); }
         });
     }
 
@@ -598,4 +670,3 @@
     }
     
     document.addEventListener('DOMContentLoaded', loadSettings);
-
