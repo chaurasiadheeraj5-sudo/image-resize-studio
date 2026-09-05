@@ -254,7 +254,7 @@
 
         /* LISTS */
         .list-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); padding-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border); margin-bottom: -0.5rem; transition: var(--theme-transition);}
-        .img-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; padding-right: 4px; min-height: 150px;}
+        .img-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; padding-right: 4px; min-height: 150px; max-height: min(480px, 55vh);}
         .list-item { background: var(--item-bg); border: 1px solid var(--glass-border); padding: 10px; border-radius: var(--radius-md); display: flex; gap: 12px; align-items: center; transition: var(--theme-transition); cursor: pointer; }
         .list-item:hover { background: var(--item-hover); transform: translateX(4px); border-color: rgba(255,255,255,0.25); }
         .list-item.selected { background: var(--item-hover); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
@@ -396,11 +396,14 @@
             .workspace { grid-template-columns: 1fr; display: flex; flex-direction: column; }
             .workspace.show-settings { grid-template-columns: 1fr; }
             .mode-switch { display: flex; flex-direction: column; }
-            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .header-info { white-space: normal; line-height: 1.4; margin-top: 10px; }
-            .header-right { width: 100%; justify-content: flex-end; }
+            header { flex-wrap: wrap; }
         }
         @media (max-width: 768px) {
+            header { padding: 0.85rem 1rem; gap: 0.5rem; }
+            .brand { gap: 10px; }
+            .brand-logo { width: 36px; height: 36px; border-radius: 10px; }
+            .brand h1 { font-size: 1.15rem; }
+            .status-badge { padding: 6px 10px; font-size: 0.68rem; gap: 6px; }
             .side-settings-toggle, .side-theme-toggle {
                 top: auto; bottom: 24px; transform: none; border-radius: 50% !important;
                 width: 50px; height: 50px; padding: 0 !important; justify-content: center;
@@ -651,7 +654,7 @@
                     </div>
 
                     <div class="control-row">
-                        <div class="control-group"><label class="control-label">Quality (%)</label><input type="number" id="outQual" value="100" min="1" max="100"></div>
+                        <div class="control-group"><label class="control-label">Quality (%)</label><input type="number" id="outQual" value="90" min="1" max="100"></div>
                         <div class="control-group"><label class="control-label" style="color: var(--warning);">Target Size (KB)</label><input type="number" id="outTarget" placeholder="Optional"></div>
                     </div>
 
@@ -664,7 +667,7 @@
         </div>
         
         <footer>
-            2026 © All rights reserved - trieye
+            2026 © All rights reserved - imgmerge
         </footer>
     </div>
 
