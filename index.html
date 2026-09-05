@@ -247,8 +247,9 @@
         /* LISTS */
         .list-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); padding-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border); margin-bottom: -0.5rem; transition: var(--theme-transition);}
         .img-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; padding-right: 4px; min-height: 150px;}
-        .list-item { background: var(--item-bg); border: 1px solid var(--glass-border); padding: 10px; border-radius: var(--radius-md); display: flex; gap: 12px; align-items: center; transition: var(--theme-transition); }
+        .list-item { background: var(--item-bg); border: 1px solid var(--glass-border); padding: 10px; border-radius: var(--radius-md); display: flex; gap: 12px; align-items: center; transition: var(--theme-transition); cursor: pointer; }
         .list-item:hover { background: var(--item-hover); transform: translateX(4px); border-color: rgba(255,255,255,0.25); }
+        .list-item.selected { background: var(--item-hover); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
         .item-thumb { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; background: #000; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3);}
         .item-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 2px;}
         .item-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); transition: color 1s ease;}
@@ -687,7 +688,7 @@
     /** STATE MANAGEMENT **/
     const app = {
         mode: 'merge', // merge or resize
-        resizeFiles: [], mergePics: [], mergeSigs: [], failedItems: [], previewTimeout: null,
+        resizeFiles: [], mergePics: [], mergeSigs: [], failedItems: [], previewTimeout: null, selectedResizeId: null,
         settings: {
             mode: 'merge', showSettings: true,
             rUnit: 'px', rW: '', rH: '', rLock: true, rPreset: 'custom',
@@ -869,6 +870,11 @@
         if(idx > -1) { URL.revokeObjectURL(arr[idx].url); arr.splice(idx, 1); updateListUI(); queuePreview(); }
     };
 
+    window.selectResizeItem = (id, evt) => {
+        if(evt) evt.stopPropagation();
+        app.selectedResizeId = id; updateListUI(); queuePreview();
+    };
+
     function updateDropzoneState(dz, count, defaultText) {
         const svg = dz.querySelector('.dz-icon'); const txt = dz.querySelector('.upload-text');
         if (count > 0) {
@@ -888,8 +894,13 @@
         if(app.mode === 'resize') {
             D.listCount.innerText = `${app.resizeFiles.length} Images`; D.btnProcess.disabled = app.resizeFiles.length === 0;
             updateDropzoneState(D.dzResize, app.resizeFiles.length, "+ Add Multiple Images");
+
+            if(app.resizeFiles.length === 0) { app.selectedResizeId = null; }
+            else if(!app.resizeFiles.some(f => f.id === app.selectedResizeId)) { app.selectedResizeId = app.resizeFiles[0].id; }
+
             app.resizeFiles.forEach((item) => {
-                D.itemList.insertAdjacentHTML('beforeend', `<div class="list-item"><img src="${item.url}" class="item-thumb"><div class="item-info"><div class="item-name">${item.name}</div><div class="item-meta">${item.w} × ${item.h}</div></div><button class="btn-icon-small" onclick="removeItem('resizeFiles', '${item.id}')">✖</button></div>`);
+                const isSel = item.id === app.selectedResizeId;
+                D.itemList.insertAdjacentHTML('beforeend', `<div class="list-item${isSel ? ' selected' : ''}" onclick="selectResizeItem('${item.id}', event)"><img src="${item.url}" class="item-thumb"><div class="item-info"><div class="item-name">${item.name}</div><div class="item-meta">${item.w} × ${item.h}</div></div><button class="btn-icon-small" onclick="removeItem('resizeFiles', '${item.id}'); event.stopPropagation();">✖</button></div>`);
             });
         } else {
             const count = Math.max(app.mergePics.length, app.mergeSigs.length);
@@ -950,7 +961,8 @@
         const s = app.settings; let w=0, h=0;
         if (app.mode === 'resize') {
             if (app.resizeFiles.length===0) { resetPreview(); return; }
-            let d = getResizeDim(app.resizeFiles[0], s); w = d.w; h = d.h;
+            const selImg = app.resizeFiles.find(f => f.id === app.selectedResizeId) || app.resizeFiles[0];
+            let d = getResizeDim(selImg, s); w = d.w; h = d.h;
         } else {
             if (app.mergePics.length===0 && app.mergeSigs.length===0) { resetPreview(); return; }
             let d = getMergeDim(s, app.mergePics[0], app.mergeSigs[0]); 
@@ -965,7 +977,8 @@
         D.prevCtx.fillStyle = '#FFFFFF'; D.prevCtx.fillRect(0,0,D.prevCanvas.width, D.prevCanvas.height);
 
         if (app.mode === 'resize') {
-            drawHQ(D.prevCtx, app.resizeFiles[0].img, 0, 0, w*scale, h*scale);
+            const selImg = app.resizeFiles.find(f => f.id === app.selectedResizeId) || app.resizeFiles[0];
+            drawHQ(D.prevCtx, selImg.img, 0, 0, w*scale, h*scale);
         } else {
             let d = getMergeDim(s, app.mergePics[0], app.mergeSigs[0]);
             let hasPic = !!app.mergePics[0]; let hasSig = !!app.mergeSigs[0];
