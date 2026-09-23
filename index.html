@@ -1,817 +1,1163 @@
-/** SECURITY: filename sanitization **/
-    // Strips path separators, control characters and OS-reserved characters from any
-    // filename derived from user input (uploaded file names or prompt() text) before
-    // it is used as a download filename or a ZIP entry name.
-    function sanitizeFilename(name) {
-        if (typeof name !== 'string') return 'file';
-        let clean = name
-            .replace(/[\/\\]/g, '_')          // no path separators (prevents zip-entry path traversal / nested folders)
-            .replace(/[\x00-\x1F\x7F]/g, '')  // strip control characters
-            .replace(/[<>:"|?*]/g, '_')       // strip characters invalid in Windows/most filesystems
-            .replace(/^\.+/, '')              // strip leading dots (hidden files / relative path segments)
-            .trim();
-        if (!clean) clean = 'file';
-        if (clean.length > 150) clean = clean.slice(0, 150);
-        return clean;
-    }
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>imgmerge — Resize &amp; Merge Studio</title>
+    <link rel="icon" type="image/svg+xml" href="imgmerge-icon.svg">
+    <link rel="apple-touch-icon" href="data:image/png;base64,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">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="./vendor/jszip.min.js"></script>
 
-    /** STATE MANAGEMENT **/
-    const app = {
-        mode: 'merge', // merge or resize
-        resizeFiles: [], mergePics: [], mergeSigs: [], failedItems: [], previewTimeout: null, selectedResizeId: null, previewGen: 0,
-        settings: {
-            mode: 'merge', showSettings: true,
-            rUnit: 'px', rW: '', rH: '', rLock: true, rPreset: 'custom',
-            pUnit: 'px', pW: '', pH: '', pLock: true,
-            sUnit: 'px', sW: '', sH: '', sLock: true,
-            outFmt: 'jpeg', outDPI: 300, outQual: 90, outTarget: ''
-        }
-    };
-
-    /** HEADER HEIGHT SYNC **/
-    // header is position:fixed (so it can span the full page width, independent
-    // of .app-container's max-width and the side-toggle gutter). Since that takes
-    // it out of normal flow, measure its real rendered height — which can change
-    // across breakpoints or if its content wraps — into a CSS variable that
-    // .app-container's padding-top uses to reserve the equivalent space.
-    const headerEl = document.querySelector('header');
-    function syncHeaderHeight() {
-        if (!headerEl) return;
-        document.documentElement.style.setProperty('--header-height', headerEl.offsetHeight + 'px');
-    }
-    syncHeaderHeight();
-    window.addEventListener('resize', syncHeaderHeight);
-    if (window.ResizeObserver) { new ResizeObserver(syncHeaderHeight).observe(headerEl); }
-
-    /** TOGGLES & THEME **/
-    const sideThemeToggle = document.getElementById('sideThemeToggle');
-    const sideSettingsToggle = document.getElementById('sideSettingsToggle');
-    const mainWorkspace = document.getElementById('mainWorkspace');
-
-    // The big decorative Sun/Moon SVGs. Their "incoming" animation (position +
-    // fade-in) is still fully driven by the existing --moon-op/--sun-op CSS
-    // variables tied to [data-theme] — untouched below. What we add here is
-    // explicit control of the "outgoing" SVG so it reliably fades opacity 1 -> 0
-    // over exactly 2s and is only then taken out of view/interaction, instead of
-    // being left at visibility:visible indefinitely once opacity hits 0.
-    const celestialMoon = document.querySelector('.celestial-moon');
-    const celestialSun = document.querySelector('.celestial-sun');
-
-    function clearCelestialFade(el) {
-        if (!el) return;
-        if (el._fadeOutTimer) { clearTimeout(el._fadeOutTimer); el._fadeOutTimer = null; }
-        if (el._holdTimer) { clearTimeout(el._holdTimer); el._holdTimer = null; }
-        // Release our inline overrides so the element goes back to being fully
-        // controlled by the existing CSS-variable-driven theme system.
-        el.style.transition = '';
-        el.style.opacity = '';
-        el.style.visibility = '';
-        el.style.pointerEvents = '';
-        el.style.willChange = '';
-    }
-
-    function fadeOutCelestial(el) {
-        if (!el) return;
-        // Repeated toggles: cancel any fade-out already in progress for this
-        // element so we never stack multiple pending hide callbacks on it.
-        if (el._fadeOutTimer) { clearTimeout(el._fadeOutTimer); el._fadeOutTimer = null; }
-        // Make sure it's interactable/visible right up until the fade starts.
-        el.style.visibility = 'visible';
-        el.style.pointerEvents = 'none';
-        // Hint the browser to promote this to its own compositor layer before
-        // the animation starts, so the 2s opacity fade runs on the compositor
-        // thread instead of competing with the rest of the theme-wide repaint
-        // (many other elements are also changing background/border/box-shadow
-        // at the same moment) — this is what was causing the fade to visibly
-        // stutter/flash on real mobile hardware even though it looked fine in
-        // fast desktop testing.
-        el.style.willChange = 'opacity';
-        // Defer to the next two animation frames (instead of forcing a
-        // synchronous layout reflow via el.offsetWidth) so the browser has
-        // registered the current opacity before we change it — this reliably
-        // triggers the transition without blocking the main thread mid-toggle.
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                el.style.transition = 'opacity 2s ease';
-                el.style.opacity = '0';
-            });
-        });
-        el._fadeOutTimer = setTimeout(() => {
-            // Only now, after the full 2s fade has actually completed, remove it
-            // from rendering/interaction entirely.
-            el.style.visibility = 'hidden';
-            el.style.willChange = '';
-            el._fadeOutTimer = null;
-        }, 2000);
-    }
-
-    // Neither SVG should stay on screen permanently — each one should only be
-    // visible for a moment right after the toggle that revealed it, then fade
-    // away and stay hidden until the theme is toggled again. This is how long
-    // the incoming SVG's existing appear animation gets to play/settle before
-    // it, too, starts its own 2s fade-out.
-    const CELESTIAL_HOLD_MS = 2000;
-
-    sideThemeToggle.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme');
-        const nxt = current === 'light' ? 'dark' : 'light';
-
-        // Whichever SVG is currently the visible one is the "outgoing" one for
-        // this toggle; the other is "incoming".
-        const outgoing = current === 'light' ? celestialSun : celestialMoon;
-        const incoming = current === 'light' ? celestialMoon : celestialSun;
-
-        // Cancel anything already in flight on both so rapid toggling never
-        // stacks timers or leaves a stale fade running.
-        clearCelestialFade(outgoing);
-        clearCelestialFade(incoming);
-
-        // Outgoing is already visible — fade it out right away, same as before.
-        fadeOutCelestial(outgoing);
-
-        // Incoming plays its existing transform/opacity "appear" animation
-        // completely untouched, then — instead of staying visible forever —
-        // automatically fades back out too, so it never remains on screen; it
-        // will only reappear on the next toggle.
-        incoming._holdTimer = setTimeout(() => {
-            incoming._holdTimer = null;
-            fadeOutCelestial(incoming);
-        }, CELESTIAL_HOLD_MS);
-
-        document.documentElement.setAttribute('data-theme', nxt); localStorage.setItem('resizeMergeTheme', nxt);
-    });
-
-    sideSettingsToggle.addEventListener('click', () => {
-        app.settings.showSettings = !app.settings.showSettings;
-        toggleWorkspacePanels();
-        saveSettings();
-    });
-
-    const savedTheme = localStorage.getItem('resizeMergeTheme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-
-    /** TOAST NOTIFICATION **/
-    let toastTimeout;
-    function showToast(msg) {
-        const toast = document.getElementById('toast');
-        document.getElementById('toastMsg').innerText = msg;
-        toast.classList.add('show');
-        clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => toast.classList.remove('show'), 4000);
-    }
-
-    /** DOM ELEMENTS **/
-    const D = {
-        modeBtns: document.querySelectorAll('.mode-btn'), upResize: document.getElementById('uploadResize'), upMerge: document.getElementById('uploadMerge'),
-        dzResize: document.getElementById('dzResize'), fiResize: document.getElementById('fiResize'), dzPic: document.getElementById('dzPic'), fiPic: document.getElementById('fiPic'), dzSig: document.getElementById('dzSig'), fiSig: document.getElementById('fiSig'),
-        listTitle: document.getElementById('listTitle'), listCount: document.getElementById('listCount'), itemList: document.getElementById('itemList'), btnClearAll: document.getElementById('btnClearAll'),
-        setResize: document.getElementById('settingsResize'), setMerge: document.getElementById('settingsMerge'), btnResetSettings: document.getElementById('btnResetSettings'), btnProcess: document.getElementById('btnProcess'),
-        prevCanvas: document.getElementById('previewCanvas'), prevCtx: document.getElementById('previewCanvas').getContext('2d'), prevPlace: document.getElementById('previewPlaceholder'), prevMeta: document.getElementById('previewMeta'), mDim: document.getElementById('metaDimensions'), mSize: document.getElementById('metaSize'),
-        modal: document.getElementById('modal'), mTitle: document.getElementById('mTitle'), mText: document.getElementById('mText'), mProg: document.getElementById('mProg'), mStats: document.getElementById('mStats'), stSuccess: document.getElementById('stSuccess'), stFail: document.getElementById('stFail'), mActions: document.getElementById('mActions'), btnZip: document.getElementById('btnZip'), btnSingle: document.getElementById('btnSingle'), btnClose: document.getElementById('btnClose'), btnRetryFail: document.getElementById('btnRetryFail'),
-        inputs: {
-            rUnit: document.getElementById('rUnit'), rW: document.getElementById('rW'), rH: document.getElementById('rH'), rPreset: document.getElementById('rPreset'),
-            pUnit: document.getElementById('pUnit'), pW: document.getElementById('pW'), pH: document.getElementById('pH'),
-            sUnit: document.getElementById('sUnit'), sW: document.getElementById('sW'), sH: document.getElementById('sH'),
-            outFmt: document.getElementById('outFmt'), outDPI: document.getElementById('outDPI'), outQual: document.getElementById('outQual'), outTarget: document.getElementById('outTarget')
-        },
-        locks: { rLock: document.getElementById('rLock'), pLock: document.getElementById('pLock'), sLock: document.getElementById('sLock') }
-    };
-
-    /** MODE SWITCHING & LAYOUT HANDLING **/
-    function toggleWorkspacePanels() {
-        mainWorkspace.classList.toggle('show-settings', app.settings.showSettings);
-        sideSettingsToggle.classList.toggle('active-state', app.settings.showSettings);
-        
-        if (app.mode === 'resize') {
-            D.listTitle.innerText = "Uploaded Images";
-            D.btnProcess.innerText = "BULK RESIZE & DOWNLOAD";
-        } else {
-            D.listTitle.innerText = "Picture + Signature Pairs";
-            D.btnProcess.innerText = "PROCESS & DOWNLOAD MERGED";
-        }
-    }
-
-    D.modeBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            D.modeBtns.forEach(b => b.classList.remove('active')); e.target.classList.add('active');
-            app.mode = app.settings.mode = e.target.dataset.mode;
+    <style>
+        /* WARM BREEZE NEO GLASSMORPHISM VARIABLES */
+        :root {
+            --peach: #F4A261; --mint: #67DCC5;
+            --primary: #F28C78; --primary-hover: #E97865;
+            --secondary: #55CDB8; --success: #5ED6A7;
+            --warning: #F4B860; --danger: #F27878;
             
-            if (app.mode === 'resize') {
-                D.upMerge.classList.remove('active'); setTimeout(() => { D.upMerge.style.display = 'none'; D.upResize.style.display = 'block'; setTimeout(() => D.upResize.classList.add('active'), 10); }, 300);
-                D.setMerge.classList.remove('active'); setTimeout(() => { D.setMerge.style.display = 'none'; D.setResize.style.display = 'block'; setTimeout(() => D.setResize.classList.add('active'), 10); }, 300);
-            } else {
-                D.upResize.classList.remove('active'); setTimeout(() => { D.upResize.style.display = 'none'; D.upMerge.style.display = 'grid'; setTimeout(() => D.upMerge.classList.add('active'), 10); }, 300);
-                D.setResize.classList.remove('active'); setTimeout(() => { D.setResize.style.display = 'none'; D.setMerge.style.display = 'block'; setTimeout(() => D.setMerge.classList.add('active'), 10); }, 300);
-            }
+            --text-main: #FFF9F5; --text-secondary: #D9D0CB; --text-muted: #94a3b8;
+            
+            --glass-bg: rgba(30, 41, 59, 0.45); --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            --input-bg: rgba(0, 0, 0, 0.3); --input-focus: rgba(0, 0, 0, 0.5);
+            --item-bg: rgba(255, 255, 255, 0.03); --item-hover: rgba(255, 255, 255, 0.08);
+            --border-dashed: rgba(255, 255, 255, 0.2); --panel-header-bg: rgba(0, 0, 0, 0.2);
 
-            toggleWorkspacePanels();
-            updateListUI(); queuePreview(); saveSettings();
-        });
-    });
-
-    /** DIMENSION LINKING & SYNC **/
-    Object.keys(D.inputs).forEach(k => { if(D.inputs[k]) { D.inputs[k].addEventListener('input', e => { app.settings[k] = e.target.value; saveSettings(); queuePreview(); }); } });
-
-    const handleLock = (type) => {
-        let lockKey = type+'Lock'; app.settings[lockKey] = !app.settings[lockKey];
-        D.locks[lockKey].classList.toggle('locked', app.settings[lockKey]); saveSettings();
-        syncDim(type, true);
-    };
-    D.locks.rLock.addEventListener('click', () => handleLock('r')); D.locks.pLock.addEventListener('click', () => handleLock('p')); D.locks.sLock.addEventListener('click', () => handleLock('s'));
-
-    const syncDim = (type, isW) => {
-        const s = app.settings; let lck, inW, inH, file;
-        if(type==='r'){ lck=s.rLock; inW=D.inputs.rW; inH=D.inputs.rH; file=app.resizeFiles[0]; }
-        if(type==='p'){ lck=s.pLock; inW=D.inputs.pW; inH=D.inputs.pH; file=app.mergePics[0]; }
-        if(type==='s'){ lck=s.sLock; inW=D.inputs.sW; inH=D.inputs.sH; file=app.mergeSigs[0]; }
-        
-        const srcVal = isW ? inW.value : inH.value;
-        if(!lck || srcVal === "" || !file) return;
-        
-        const ratio = file.w / file.h;
-        if(isW) inH.value = (parseFloat(inW.value) / ratio).toFixed(2).replace(/\.00$/, '');
-        else inW.value = (parseFloat(inH.value) * ratio).toFixed(2).replace(/\.00$/, '');
-        
-        if(type==='r'){ s.rW=inW.value; s.rH=inH.value; } if(type==='p'){ s.pW=inW.value; s.pH=inH.value; } if(type==='s'){ s.sW=inW.value; s.sH=inH.value; }
-    };
-    D.inputs.rW.addEventListener('input', () => syncDim('r', true)); D.inputs.rH.addEventListener('input', () => syncDim('r', false));
-    D.inputs.pW.addEventListener('input', () => syncDim('p', true)); D.inputs.pH.addEventListener('input', () => syncDim('p', false));
-    D.inputs.sW.addEventListener('input', () => syncDim('s', true)); D.inputs.sH.addEventListener('input', () => syncDim('s', false));
-
-    // Batch Resize Presets
-    D.inputs.rPreset.addEventListener('change', (e) => {
-        if(e.target.value === 'custom') return;
-        let w='', h='';
-        if(e.target.value === 'original' && app.resizeFiles.length>0) { w = app.resizeFiles[0].w; h = app.resizeFiles[0].h; D.inputs.rUnit.value = 'px'; }
-        else if(e.target.value === 'hd') { w = 1920; h = 1080; D.inputs.rUnit.value = 'px'; }
-        else if(e.target.value === 'social') { w = 1080; h = 1080; D.inputs.rUnit.value = 'px'; }
-        else if(e.target.value === '50p') { w = 50; h = 50; D.inputs.rUnit.value = '%'; }
-        D.inputs.rW.value = w; D.inputs.rH.value = h; app.settings.rW = w; app.settings.rH = h; app.settings.rUnit = D.inputs.rUnit.value;
-        queuePreview();
-    });
-
-    /** UPLOAD HANDLING & FILE PROCESSING **/
-    const bindDrop = (dz, fi, targetArr) => {
-        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-        dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); const files = Array.from(e.dataTransfer.files); if(files.length) processFiles(files, targetArr); });
-        fi.addEventListener('change', e => { const files = Array.from(e.target.files); fi.value = ''; if(files.length) processFiles(files, targetArr); });
-    };
-    bindDrop(D.dzResize, D.fiResize, 'resizeFiles'); bindDrop(D.dzPic, D.fiPic, 'mergePics'); bindDrop(D.dzSig, D.fiSig, 'mergeSigs');
-
-    const loadImage = src => new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src; });
-    async function processFiles(files, targetKey) {
-        const valid = ['image/jpeg', 'image/png', 'image/webp'];
-        
-        if (app.mode === 'merge') {
-            let fileToProcess = null;
-            for(let file of files) {
-                if(valid.includes(file.type)) { fileToProcess = file; break; }
-            }
-            if (!fileToProcess) return;
-
-            app[targetKey].forEach(f => URL.revokeObjectURL(f.url));
-            app[targetKey] = [];
-
-            const url = URL.createObjectURL(fileToProcess);
-            try { 
-                const img = await loadImage(url); 
-                app[targetKey].push({ id: 'f_'+Math.random().toString(36).substr(2,9), name: fileToProcess.name, url: url, img: img, w: img.width, h: img.height, size: fileToProcess.size, raw: fileToProcess }); 
-            } catch(e) { URL.revokeObjectURL(url); }
-        } else {
-            // Bulk Resize allows multiple files
-            for(let file of files) {
-                if(!valid.includes(file.type)) continue; 
-                const url = URL.createObjectURL(file);
-                try { 
-                    const img = await loadImage(url); 
-                    app[targetKey].push({ id: 'f_'+Math.random().toString(36).substr(2,9), name: file.name, url: url, img: img, w: img.width, h: img.height, size: file.size, raw: file }); 
-                } catch(e) { URL.revokeObjectURL(url); }
-            }
+            --radius-xl: 20px; --radius-lg: 16px;
+            --radius-md: 10px; --radius-sm: 6px;
+            
+            --transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --transition-fast: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --theme-transition: background-color 2.2s cubic-bezier(0.4, 0, 0.2, 1),
+                                border-color 1.8s cubic-bezier(0.4, 0, 0.2, 1),
+                                box-shadow 1.8s cubic-bezier(0.4, 0, 0.2, 1),
+                                color 1.2s ease;
+                                
+            /* Sky Blending */
+            --moonlight-opacity: 1; --sunrise-opacity: 0;
+            --moon-pos: translateY(0) scale(1);
+            --sun-pos: translateY(100vh) scale(0.6);
+            --moon-op: 1; --sun-op: 0;
+            --page-bg: #0f172a;
+            --side-gutter-left: 84px; --side-gutter-right: 84px;
         }
-        updateListUI(); queuePreview();
-    }
 
-    D.btnClearAll.addEventListener('click', () => {
-        if(app.mode === 'resize') { app.resizeFiles.forEach(f => URL.revokeObjectURL(f.url)); app.resizeFiles = []; }
-        else { app.mergePics.forEach(f => URL.revokeObjectURL(f.url)); app.mergePics = []; app.mergeSigs.forEach(f => URL.revokeObjectURL(f.url)); app.mergeSigs = []; }
-        updateListUI(); queuePreview();
-    });
-
-    function removeItem(modeKey, id) {
-        const arr = app[modeKey]; const idx = arr.findIndex(f => f.id === id);
-        if(idx > -1) { URL.revokeObjectURL(arr[idx].url); arr.splice(idx, 1); updateListUI(); queuePreview(); }
-    }
-
-    function selectResizeItem(id, evt) {
-        if(evt) evt.stopPropagation();
-        app.selectedResizeId = id; updateListUI(); queuePreview();
-    }
-
-    function updateDropzoneState(dz, count, defaultText) {
-        const svg = dz.querySelector('.dz-icon'); const txt = dz.querySelector('.upload-text');
-        if (count > 0) {
-            dz.classList.add('uploaded');
-            svg.innerHTML = `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>`; 
-            svg.style.fill = "var(--success)"; 
-            txt.innerText = app.mode === 'resize' ? `${count} Images Selected` : `Image Added`;
-        } else {
-            dz.classList.remove('uploaded'); svg.style.fill = "var(--text-muted)"; txt.innerText = defaultText;
-            if(dz === D.dzPic || dz === D.dzResize) svg.innerHTML = `<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>`;
-            else if(dz === D.dzSig) svg.innerHTML = `<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>`;
+        [data-theme="light"] {
+            --text-main: #0F172A; --text-secondary: #334155; --text-muted: #64748B;
+            --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(0, 0, 0, 0.08);
+            --glass-shadow: 0 15px 35px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            --input-bg: rgba(255, 255, 255, 0.85); --input-focus: #FFFFFF;
+            --item-bg: rgba(0, 0, 0, 0.03); --item-hover: rgba(0, 0, 0, 0.06);
+            --border-dashed: rgba(0, 0, 0, 0.15); --panel-header-bg: rgba(0, 0, 0, 0.03);
+            
+            --moonlight-opacity: 0; --sunrise-opacity: 1;
+            --moon-pos: translateY(100vh) scale(0.6);
+            --sun-pos: translateY(0) scale(1);
+            --moon-op: 0; --sun-op: 1;
+            --page-bg: #fff7ed;
         }
-    }
 
-    function makeThumbRow(item, labelText, labelColor, modeKey) {
-        const row = document.createElement('div');
-        row.className = 'pair-row';
-        const label = document.createElement('div');
-        label.className = 'pair-label';
-        if(labelColor) label.style.color = labelColor;
-        label.textContent = labelText;
-        row.appendChild(label);
-        const img = document.createElement('img');
-        img.src = item.url; img.className = 'item-thumb'; img.alt = '';
-        row.appendChild(img);
-        const info = document.createElement('div');
-        info.className = 'item-info';
-        const nameEl = document.createElement('div');
-        nameEl.className = 'item-name'; nameEl.textContent = item.name;
-        info.appendChild(nameEl);
-        row.appendChild(info);
-        const btn = document.createElement('button');
-        btn.className = 'btn-icon-small'; btn.type = 'button'; btn.textContent = '✖';
-        btn.addEventListener('click', (e) => { e.stopPropagation(); removeItem(modeKey, item.id); });
-        row.appendChild(btn);
-        return row;
-    }
+        @media (prefers-reduced-motion: reduce) {
+            :root { --transition: none !important; }
+            .celestial-container *, .bg-layer { transition: none !important; animation: none !important; }
+        }
 
-    function makeMissingRow(labelText, labelColor, missingText) {
-        const row = document.createElement('div');
-        row.className = 'pair-row';
-        const label = document.createElement('div');
-        label.className = 'pair-label';
-        if(labelColor) label.style.color = labelColor;
-        label.textContent = labelText;
-        row.appendChild(label);
-        const missing = document.createElement('div');
-        missing.className = 'pair-missing';
-        missing.style.borderColor = 'var(--glass-border)'; missing.style.color = 'var(--text-muted)';
-        missing.textContent = missingText;
-        row.appendChild(missing);
-        return row;
-    }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    function updateListUI() {
-        D.itemList.innerHTML = '';
-        if(app.mode === 'resize') {
-            D.listCount.innerText = `${app.resizeFiles.length} Images`; D.btnProcess.disabled = app.resizeFiles.length === 0;
-            updateDropzoneState(D.dzResize, app.resizeFiles.length, "+ Add Multiple Images");
+        html { background: var(--page-bg); }
 
-            if(app.resizeFiles.length === 0) { app.selectedResizeId = null; }
-            else if(!app.resizeFiles.some(f => f.id === app.selectedResizeId)) { app.selectedResizeId = app.resizeFiles[0].id; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--text-main);
+            background: var(--page-bg);
+            min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; overflow-x: hidden; line-height: 1.5; 
+            transition: color 1s ease, background-color 1.5s ease;
+            /* Reserve a gutter on each edge so the fixed Theme Mode / Dimensions &
+               Output side controls (see .side-theme-toggle / .side-settings-toggle)
+               always have their own space and never sit on top of page content.
+               Zeroed out again below 768px, where those controls reposition to
+               floating corner buttons instead of full-height side rails. */
+            padding-left: var(--side-gutter-left, 0px);
+            padding-right: var(--side-gutter-right, 0px);
+        }
 
-            app.resizeFiles.forEach((item) => {
-                const isSel = item.id === app.selectedResizeId;
-                const div = document.createElement('div');
-                div.className = 'list-item' + (isSel ? ' selected' : '');
-                div.addEventListener('click', (e) => selectResizeItem(item.id, e));
+        /* BACKGROUND SKY LAYERS */
+        .bg-layer {
+            position: fixed; inset: 0; z-index: -5; pointer-events: none;
+            transition: opacity 2.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .bg-moonlight {
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(circle at 50% 120%, rgba(99,102,241,0.28) 0%, transparent 70%),
+                radial-gradient(circle at 10% 10%, rgba(242, 140, 120, 0.15), transparent 35%),
+                radial-gradient(circle at 90% 15%, rgba(85, 205, 184, 0.15), transparent 35%);
+            opacity: var(--moonlight-opacity); 
+        }
+        .bg-sunrise {
+            background-color: #fff7ed;
+            background-image: 
+                radial-gradient(circle at 50% 115%, rgba(251,146,60,0.35) 0%, rgba(253,230,138,0.25) 45%, transparent 85%),
+                radial-gradient(circle at 10% 10%, rgba(242, 140, 120, 0.25), transparent 35%),
+                radial-gradient(circle at 90% 15%, rgba(85, 205, 184, 0.25), transparent 35%);
+            opacity: var(--sunrise-opacity); 
+        }
 
-                const img = document.createElement('img');
-                img.src = item.url; img.className = 'item-thumb'; img.alt = '';
-                div.appendChild(img);
+        /* Floating Ambient Orbs */
+        .ambient-orb {
+            position: fixed; border-radius: 50%; filter: blur(100px); z-index: -4;
+            animation: float 25s infinite ease-in-out alternate; pointer-events: none;
+            transition: opacity 2.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .orb-moon {
+            top: -10%; left: -5%; width: 45vw; height: 45vw; background: rgba(99, 102, 241, 0.28);
+            opacity: var(--moonlight-opacity); 
+        }
+        .orb-sun {
+            top: -10%; left: -5%; width: 45vw; height: 45vw; background: rgba(251, 146, 60, 0.3);
+            opacity: var(--sunrise-opacity); 
+        }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(50px, 80px) scale(1.1); } }
 
-                const info = document.createElement('div');
-                info.className = 'item-info';
-                const nameEl = document.createElement('div');
-                nameEl.className = 'item-name'; nameEl.textContent = item.name;
-                const metaEl = document.createElement('div');
-                metaEl.className = 'item-meta'; metaEl.textContent = `${item.w} × ${item.h}`;
-                info.appendChild(nameEl); info.appendChild(metaEl);
-                div.appendChild(info);
+        /* DETAILED CELESTIAL BODIES (SUN & MOON) */
+        .celestial-container {
+            position: fixed; inset: 0; 
+            z-index: -4; pointer-events: none; overflow: hidden;
+        }
+        .celestial-body {
+            position: absolute; left: 50%; top: 5%; margin-left: -150px;
+            /* Smooth, no-overshoot deceleration instead of the old "back" easing
+               (which overshot past its target, reading as a quick bounce/drop
+               before the fade caught up) — and matched to the same 2s duration
+               as opacity so movement and fade finish together, in sync. */
+            transition: transform 2s cubic-bezier(0.22, 1, 0.36, 1), opacity 2s ease;
+        }
+        .celestial-moon {
+            width: 300px; height: 300px;
+            transform: var(--moon-pos); opacity: var(--moon-op);
+        }
+        .celestial-sun {
+            width: 300px; height: 300px;
+            transform: var(--sun-pos); opacity: var(--sun-op);
+            animation: sunPulse 10s infinite alternate ease-in-out;
+        }
+        
+        @keyframes sunPulse {
+            0% { filter: drop-shadow(0 0 20px rgba(251,146,60,0.3)); }
+            100% { filter: drop-shadow(0 0 40px rgba(251,146,60,0.5)); }
+        }
 
-                const btn = document.createElement('button');
-                btn.className = 'btn-icon-small'; btn.type = 'button'; btn.textContent = '✖';
-                btn.addEventListener('click', (e) => { e.stopPropagation(); removeItem('resizeFiles', item.id); });
-                div.appendChild(btn);
+        .app-container { max-width: 1600px; margin: 0 auto; padding: 1.5rem; width: 100%; display: flex; flex-direction: column; flex: 1; gap: 1.5rem; }
 
-                D.itemList.appendChild(div);
-            });
-        } else {
-            const count = Math.max(app.mergePics.length, app.mergeSigs.length);
-            D.listCount.innerText = `${count} Pair${count!==1?'s':''}`; D.btnProcess.disabled = count === 0;
-            updateDropzoneState(D.dzPic, app.mergePics.length, "+ Add Picture"); updateDropzoneState(D.dzSig, app.mergeSigs.length, "+ Add Signature");
+        /* HEADER (no boxed panel — sits directly on the page background) */
+        /* position:fixed anchors the header to the true viewport, independent of
+           .app-container's max-width/centering and the body's side-toggle gutter,
+           so it always spans the full page edge-to-edge. Its height is measured in
+           JS into --header-height, which .app-container's padding-top below uses
+           to reserve the equivalent space that the header used to occupy in flow. */
+        header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            width: 100%;
+            z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1rem;
+            margin: 0;
+            min-height: 70px;
+            background: color-mix(in srgb, var(--glass-bg) 78%, transparent);
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            isolation: isolate;
+        }
+        .app-container { padding-top: calc(var(--header-height, 70px) + 1.5rem); }
+        header::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent);
+        }
+        .brand { display: flex; flex-direction: row; align-items: center; gap: 14px; }
+        .brand-logo {
+            width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; display: block;
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+        }
+        .brand-text { display: flex; flex-direction: column; }
+        .brand h1 { font-size: 1.5rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; line-height: 1.15; transition: color 1s ease;}
+        .brand p { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; transition: color 1s ease; margin-top: 3px;}
+        .header-info { font-size: 0.8rem; color: var(--secondary); font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+        .header-info svg { flex-shrink: 0;}
+        .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;}
 
-            for(let i=0; i<count; i++) {
-                const pic = app.mergePics[i]; const sig = app.mergeSigs[i];
-                const pair = document.createElement('div');
-                pair.className = 'merge-pair';
-                pair.appendChild(pic ? makeThumbRow(pic, 'PIC', null, 'mergePics') : makeMissingRow('PIC', null, 'Standalone Signature Setup'));
-                pair.appendChild(sig ? makeThumbRow(sig, 'SIG', 'var(--secondary)', 'mergeSigs') : makeMissingRow('SIG', 'var(--secondary)', 'Standalone Picture Setup'));
-                D.itemList.appendChild(pair);
+        .status-badge {
+            display: flex; align-items: center; gap: 8px; background: rgba(94, 214, 167, 0.15); border: 1px solid rgba(94, 214, 167, 0.3);
+            color: var(--success); padding: 8px 16px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+            transition: var(--theme-transition);
+        }
+        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+
+        /* INDEPENDENT SIDE TOGGLES (Reversed Color Representation) */
+        
+        /* Theme Toggle */
+        .side-theme-toggle {
+            position: fixed; left: 0; top: 50%; transform: translateY(-50%); 
+            background: var(--glass-bg); color: var(--text-main); 
+            border: 1px solid var(--glass-border); border-left: none; border-radius: 0 16px 16px 0; padding: 20px 12px;
+            cursor: pointer; z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 12px;
+            box-shadow: 4px 4px 20px rgba(0,0,0,0.15); transition: var(--transition);
+            backdrop-filter: blur(24px) saturate(130%); -webkit-backdrop-filter: blur(24px) saturate(130%);
+        }
+        .side-theme-toggle:hover { background: var(--primary); color: #fff; padding-left: 18px; box-shadow: 4px 4px 25px rgba(242, 140, 120, 0.4); border-color: var(--primary-hover); }
+        .side-theme-toggle .toggle-text { writing-mode: vertical-rl; font-weight: 800; font-size: 0.82rem; letter-spacing: 0.15em; text-transform: uppercase; }
+        
+        .theme-icon-container { position: relative; width: 24px; height: 24px; }
+        .side-theme-toggle svg { position: absolute; top: 0; left: 0; transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.2s ease; }
+        [data-theme="light"] .side-theme-toggle .svg-moon { opacity: 1; transform: rotate(0deg) scale(1); } 
+        [data-theme="light"] .side-theme-toggle .svg-sun { opacity: 0; transform: rotate(90deg) scale(0.5); }
+        [data-theme="dark"] .side-theme-toggle .svg-moon { opacity: 0; transform: rotate(-90deg) scale(0.5); } 
+        [data-theme="dark"] .side-theme-toggle .svg-sun { opacity: 1; transform: rotate(0deg) scale(1); }
+
+        /* Settings Toggle */
+        .side-settings-toggle {
+            position: fixed; right: 0; top: 50%; transform: translateY(-50%); 
+            background: var(--primary); color: #fff;
+            border: 1px solid var(--primary-hover); border-right: none; border-radius: 16px 0 0 16px; padding: 20px 12px;
+            cursor: pointer; z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 12px;
+            box-shadow: -4px 4px 20px rgba(242, 140, 120, 0.35); transition: var(--transition);
+        }
+        .side-settings-toggle:hover { padding-right: 18px; filter: brightness(1.1); box-shadow: -4px 4px 25px rgba(242, 140, 120, 0.5);}
+        .side-settings-toggle.active-state { 
+            background: var(--glass-bg); color: var(--text-main); border-color: var(--glass-border);
+            backdrop-filter: blur(24px) saturate(130%); -webkit-backdrop-filter: blur(24px) saturate(130%);
+            box-shadow: -4px 4px 20px rgba(0,0,0,0.1); padding-right: 12px; filter: none;
+        }
+        .side-settings-toggle .toggle-text { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 800; font-size: 0.82rem; letter-spacing: 0.15em; text-transform: uppercase; }
+        .side-settings-toggle svg { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .side-settings-toggle.active-state svg { transform: rotate(90deg); }
+
+        /* MODE SWITCHER */
+        .mode-switch { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 1rem; background: transparent; }
+        .mode-btn {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-muted);
+            min-height: 56px; border-radius: var(--radius-lg); font-size: 1.15rem; font-weight: 700; letter-spacing: 0.03em; cursor: pointer; transition: var(--theme-transition), transform 0.2s ease;
+            backdrop-filter: blur(24px) saturate(130%); display: flex; align-items: center; justify-content: center; white-space: nowrap; box-shadow: var(--glass-shadow);
+        }
+        .mode-btn:hover { background: var(--item-hover); color: var(--text-main); transform: translateY(-2px); }
+        .mode-btn.active { background: var(--primary); color: #fff; border-color: var(--primary-hover); box-shadow: 0 10px 25px -5px rgba(242, 140, 120, 0.5), inset 0 1px 0 rgba(255,255,255,0.3); transform: translateY(0); }
+
+        /* UPLOAD SECTIONS */
+        .upload-wrapper { width: 100%; }
+        .upload-section { display: none; width: 100%; opacity: 0; transform: translateY(10px); transition: var(--transition); }
+        .upload-section.active { display: grid; opacity: 1; transform: translateY(0); }
+        .dual-upload { grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
+
+        .upload-zone {
+            border: 2px dashed var(--border-dashed); border-radius: var(--radius-xl); padding: 2.5rem 1rem; text-align: center; cursor: pointer; transition: var(--theme-transition), transform 0.3s ease, box-shadow 0.3s ease;
+            background: var(--glass-bg); backdrop-filter: blur(24px) saturate(130%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 140px; box-shadow: var(--glass-shadow);
+        }
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: rgba(242, 140, 120, 0.08); transform: translateY(-3px); box-shadow: 0 15px 35px rgba(0,0,0,0.2);}
+        .upload-zone.zone-secondary:hover, .upload-zone.zone-secondary.dragover { border-color: var(--secondary); background: rgba(85, 205, 184, 0.08); }
+        .upload-zone .dz-icon { width: 40px; height: 40px; fill: var(--text-muted); transition: var(--transition); }
+        .upload-zone:hover .dz-icon { fill: var(--primary); transform: scale(1.1); }
+        .upload-zone.zone-secondary:hover .dz-icon { fill: var(--secondary); }
+        .upload-zone.uploaded { border-color: var(--success); background: rgba(94, 214, 167, 0.05); border-style: solid;}
+        .upload-title { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 4px; transition: color 0.8s ease;}
+        .upload-text { font-size: 1.15rem; font-weight: 600; color: var(--text-main); transition: color 0.8s ease;}
+        .upload-subtext { font-size: 0.85rem; color: var(--text-muted); transition: color 0.8s ease;}
+
+        /* WORKSPACE GRID */
+        .workspace { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; flex: 1; align-items: stretch; transition: grid-template-columns 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .workspace.show-settings { grid-template-columns: 340px 1fr 380px; }
+        
+        .glass-panel {
+            background: var(--glass-bg); backdrop-filter: blur(24px) saturate(130%); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; overflow: hidden; position: relative; transition: var(--theme-transition);
+        }
+        
+        #settingsPanel { display: none; opacity: 0; transform: translateX(20px); transition: opacity 0.4s ease, transform 0.4s ease; }
+        .workspace.show-settings #settingsPanel { display: flex; opacity: 1; transform: translateX(0); }
+
+        .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: var(--panel-header-bg); z-index: 2; transition: var(--theme-transition);}
+        .panel-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); letter-spacing: 0.02em; transition: color 1s ease;}
+        .panel-body { padding: 1.5rem; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(150,150,150,0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(150,150,150,0.5); }
+
+        /* LISTS */
+        .list-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); padding-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border); margin-bottom: -0.5rem; transition: var(--theme-transition);}
+        .img-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; padding-right: 4px; min-height: 150px; max-height: min(480px, 55vh);}
+        .list-item { background: var(--item-bg); border: 1px solid var(--glass-border); padding: 10px; border-radius: var(--radius-md); display: flex; gap: 12px; align-items: center; transition: var(--theme-transition); cursor: pointer; }
+        .list-item:hover { background: var(--item-hover); transform: translateX(4px); border-color: rgba(255,255,255,0.25); }
+        .list-item.selected { background: var(--item-hover); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+        .item-thumb { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; background: #000; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3);}
+        .item-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 2px;}
+        .item-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); transition: color 1s ease;}
+        .item-meta { font-size: 0.7rem; color: var(--text-muted); transition: color 1s ease;}
+        .btn-icon-small { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: var(--radius-sm); transition: var(--fast-transition); }
+        .btn-icon-small:hover { color: var(--danger); background: rgba(242, 120, 120, 0.15); transform: scale(1.1); }
+
+        .merge-pair { background: var(--item-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px; padding: 10px; transition: var(--theme-transition);}
+        .merge-pair:hover { background: var(--item-hover); border-color: rgba(255,255,255,0.25); transform: translateX(4px); }
+        .pair-row { display: flex; align-items: center; gap: 10px; }
+        .pair-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); width: 30px; transition: color 1s ease;}
+        .pair-missing { flex: 1; font-size: 0.8rem; color: var(--text-muted); font-style: italic; display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(244, 184, 96, 0.4); border-radius: var(--radius-sm); height: 48px; transition: border-color 1.8s ease;}
+
+        /* ADVANCED DIMENSION LINKER */
+        .merge-dim-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .dim-col { display: flex; flex-direction: column; gap: 6px; }
+
+        .linker-container {
+            display: flex; align-items: center; justify-content: space-between; gap: 4px;
+            background: var(--input-bg); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md); padding: 14px 12px; margin-bottom: 1rem;
+            transition: var(--theme-transition);
+        }
+        .linker-inputs { display: flex; flex-direction: column; gap: 10px; position: relative; flex: 1; }
+        .linker-inputs::after {
+            content: ''; position: absolute; right: -20px; top: 12px; bottom: 12px; width: 12px;
+            border: 2px solid var(--glass-border); border-left: none; border-radius: 0 4px 4px 0; transition: border-color 1.8s ease;
+        }
+        .linker-row { display: flex; align-items: center; gap: 8px; }
+        .linker-row span { font-weight: 700; color: var(--text-muted); width: 14px; font-size: 0.8rem; transition: color 1s ease;}
+        .linker-row input { flex: 1; min-width: 0; width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--bg-base); color: var(--text-main); font-family: inherit; font-size: 0.85rem; transition: var(--theme-transition);}
+        .linker-row input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(242, 140, 120, 0.2); }
+        .linker-lock {
+            z-index: 2; width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+            background: var(--bg-base); border: 1px solid var(--glass-border); 
+            margin-left: 20px; margin-right: 6px; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: var(--theme-transition);
+        }
+        .linker-lock:hover { border-color: var(--text-muted); color: var(--text-main); transform: scale(1.05); }
+        .linker-lock.locked { color: var(--primary); border-color: var(--primary); background: rgba(242, 140, 120, 0.1); }
+        .linker-lock.locked:hover { background: rgba(242, 140, 120, 0.2); }
+        .linker-unit select { width: 75px; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--bg-base); color: var(--text-main); font-size: 0.85rem; cursor: pointer; transition: var(--theme-transition);}
+        .linker-unit select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(242, 140, 120, 0.2); }
+
+        /* Controls */
+        .control-group { display: flex; flex-direction: column; gap: 6px; flex: 1;}
+        .control-row { display: flex; gap: 12px; width: 100%; align-items: flex-end;}
+        .control-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; transition: color 1s ease;}
+        .settings-group { display: none; opacity: 0; transform: translateY(10px); transition: var(--transition); } 
+        .settings-group.active { display: block; opacity: 1; transform: translateY(0); }
+        
+        input[type="number"], input[type="text"], select {
+            width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 10px 12px; border-radius: var(--radius-md); font-size: 0.875rem; font-family: inherit; transition: var(--theme-transition);
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); background: var(--input-focus); box-shadow: 0 0 0 3px rgba(242, 140, 120, 0.2); }
+        select option { background: #111827; color: #fff; }
+
+        .locked-badge {
+            width: 100%; padding: 10px 12px; background: var(--item-bg); border: 1px dashed var(--glass-border);
+            border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; color: var(--secondary);
+            display: flex; align-items: center; gap: 6px; letter-spacing: 0.05em; height: 40px; transition: var(--theme-transition);
+        }
+
+        /* PREVIEW */
+        .preview-container {
+            flex: 1; display: flex; flex-direction: column; position: relative;
+            background: repeating-conic-gradient(rgba(150,150,150,0.05) 0% 25%, transparent 0% 50%) 50% / 24px 24px;
+            background-color: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--glass-border);
+            overflow: hidden; align-items: center; justify-content: center; min-height: 400px; transition: var(--theme-transition);
+        }
+        #previewCanvas { max-width: 95%; max-height: 95%; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-radius: 4px; transition: opacity 0.4s ease; }
+        .preview-placeholder { position: absolute; text-align: center; color: var(--text-muted); font-size: 0.95rem; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; transition: color 1s ease; }
+        .preview-placeholder svg { width: 48px; height: 48px; opacity: 0.4; fill: currentColor;}
+        .preview-meta {
+            position: absolute; bottom: 1.5rem; background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+            padding: 8px 20px; border-radius: 99px; color: #fff; border: 1px solid rgba(255,255,255,0.15); text-align: center; pointer-events: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 2px;
+        }
+        .preview-meta-dim { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em;}
+        .preview-meta-size { font-size: 0.7rem; color: var(--primary); font-weight: 600; }
+
+        /* Buttons & Actions */
+        .primary-action-bar { margin-top: 0.5rem; display: flex; justify-content: center; width: 100%;}
+        .btn {
+            padding: 18px 36px; font-weight: 800; font-size: 1.1rem; border-radius: var(--radius-xl); max-width: 600px;
+            border: none; cursor: pointer; transition: var(--fast-transition); width: 100%;
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; letter-spacing: 0.03em;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: #fff; box-shadow: 0 8px 25px -6px var(--primary-glow); border: 1px solid rgba(255,255,255,0.2); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-3px) scale(1.01); box-shadow: 0 15px 35px -6px var(--primary-glow); filter: brightness(1.05);}
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: grayscale(1); box-shadow: none;}
+        .btn-ghost { background: transparent; color: var(--text-muted); font-size: 0.85rem; padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid transparent; transition: var(--theme-transition);}
+        .btn-ghost:hover { background: var(--item-hover); color: var(--text-main); border-color: var(--glass-border); transform: translateY(-1px);}
+        .btn-danger-outline { border: 1px solid rgba(242, 120, 120, 0.4); color: var(--danger); background: rgba(242, 120, 120, 0.05); padding: 8px 16px; font-size: 0.8rem; border-radius: 99px; font-weight: 600; transition: var(--fast-transition);}
+        .btn-danger-outline:hover { background: rgba(242, 120, 120, 0.2); border-color: var(--danger); color: #fff; transform: translateY(-1px);}
+        .btn-warning { background: var(--warning); color: #000; font-size: 0.95rem; padding: 12px 24px; border-radius: var(--radius-lg);}
+        .btn-warning:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(244, 184, 96, 0.3);}
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-card { background: #111827; border: 1px solid var(--glass-border); border-top: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-xl); padding: 3rem; width: 90%; max-width: 480px; text-align: center; box-shadow: 0 25px 60px -12px rgba(0,0,0,1); color: #fff; transition: var(--theme-transition); transform: scale(0.95); opacity: 0;}
+        .modal-overlay.active .modal-card { transform: scale(1); opacity: 1; }
+        .progress-track { width: 100%; height: 14px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; margin: 2rem 0; border: 1px solid var(--glass-border); }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .modal-actions { display: flex; gap: 12px; margin-top: 2rem; justify-content: center; display: none; flex-wrap: wrap;}
+
+        /* Toast Notification */
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: var(--primary); color: #fff; padding: 14px 28px; border-radius: 99px;
+            font-weight: 600; font-size: 0.95rem; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease; z-index: 3000; opacity: 0;
+            display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        /* FOOTER */
+        footer { margin-top: auto; text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; letter-spacing: 0.05em; background: var(--glass-bg); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); transition: var(--theme-transition); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Responsive Settings */
+        @media (max-width: 1400px) { 
+            .workspace.show-settings { grid-template-columns: 320px 1fr 380px; } 
+            .merge-dim-row { grid-template-columns: 1fr; gap: 1.5rem; }
+        }
+        @media (max-width: 1200px) {
+            .workspace { grid-template-columns: 320px 1fr; }
+            .workspace.show-settings { grid-template-columns: 320px 1fr 320px; }
+            .preview-container { min-height: 400px; }
+            .dual-upload { grid-template-columns: 1fr; gap: 1rem;}
+        }
+        @media (max-width: 992px) {
+            .workspace { grid-template-columns: 1fr; display: flex; flex-direction: column; }
+            .workspace.show-settings { grid-template-columns: 1fr; }
+            .mode-switch { display: flex; flex-direction: column; }
+            header { flex-wrap: wrap; }
+        }
+        @media (max-width: 768px) {
+            body { --side-gutter-left: 0px; --side-gutter-right: 0px; }
+            header { padding: 0.6rem 0.75rem; margin: 0; min-height: 62px; gap: 0.5rem; }
+            .brand { gap: 10px; }
+            .brand-logo { width: 36px; height: 36px; border-radius: 10px; }
+            .brand h1 { font-size: 1.15rem; }
+            .status-badge { padding: 6px 10px; font-size: 0.68rem; gap: 6px; }
+            .side-settings-toggle, .side-theme-toggle {
+                top: auto; bottom: 24px; transform: none; border-radius: 50% !important;
+                width: 50px; height: 50px; padding: 0 !important; justify-content: center;
             }
+            .side-theme-toggle { left: 20px; border: 1px solid var(--glass-border); }
+            .side-settings-toggle { left: 20px; right: auto; bottom: 86px; border: 1px solid var(--primary-hover); }
+            .side-theme-toggle .toggle-text, .side-settings-toggle .toggle-text { display: none; }
+            .side-theme-toggle .theme-icon-container { width: 24px; height: 24px; margin-top: 0;}
         }
-    }
-
-    /** MATH & RENDERING **/
-    function cvtPx(val, unit, orig, dpi) {
-        if(!val) return null; const n = parseFloat(val); if(isNaN(n)||n<=0) return null;
-        let d = parseFloat(dpi)||300; switch(unit) { case 'px': return n; case '%': return orig*(n/100); case 'cm': return (n/2.54)*d; case 'mm': return (n/25.4)*d; default: return orig; }
-    }
     
-    function getMergeDim(s, picImg, sigImg) {
-        let baseW = picImg ? picImg.w : (sigImg ? sigImg.w : 1000);
-        let baseH = picImg ? picImg.h : (sigImg ? sigImg.h : 1200);
-
-        let pw = cvtPx(s.pW, s.pUnit, baseW, s.outDPI) || baseW;
-        let ph = cvtPx(s.pH, s.pUnit, baseH, s.outDPI) || baseH;
-        let sw = cvtPx(s.sW, s.sUnit, baseW, s.outDPI) || baseW;
-        let sh = cvtPx(s.sH, s.sUnit, baseH, s.outDPI) || 300;
-
-        let standalonePicW = Math.round(pw); let standalonePicH = Math.round(ph);
-        let standaloneSigW = Math.round(sw); let standaloneSigH = Math.round(sh);
-
-        let fw = Math.max(standalonePicW, standaloneSigW);
-        let fh = standalonePicH + standaloneSigH;
-
-        return { fw, fh, pw, ph, sw, sh, standalonePicW, standalonePicH, standaloneSigW, standaloneSigH, finalPh: standalonePicH, finalSh: standaloneSigH };
-    }
-
-    function getResizeDim(img, s) {
-        let w = cvtPx(s.rW, s.rUnit, img.w, s.outDPI), h = cvtPx(s.rH, s.rUnit, img.h, s.outDPI);
-        if(s.rLock) { if(w&&!h) h=img.h*(w/img.w); else if(!w&&h) w=img.w*(h/img.h); }
-        if(!w) w=img.w; if(!h) h=img.h; return { w: Math.round(w), h: Math.round(h) };
-    }
-
-    function drawHQ(ctx, img, dx, dy, dw, dh) {
-        if (!img || dw<=0 || dh<=0) return; let sx=0, sy=0, sw=img.width, sh=img.height;
-        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-    }
-
-    /** LIVE PREVIEW **/
-    function queuePreview() { clearTimeout(app.previewTimeout); app.previewTimeout = setTimeout(() => requestAnimationFrame(renderPreview), 50); }
-
-    // Mirrors expBlob()'s quality/downscale search used at export time, but also
-    // reports the resulting width/height so the live preview can show an accurate
-    // estimate when a Target Size (KB) is set.
-    async function estimateTargetFit(canvas, type, s) {
-        const tkb = parseFloat(s.outTarget);
-        if (!((type === 'image/jpeg' || type === 'image/webp') && !isNaN(tkb) && tkb > 0)) return null;
-        const tb = tkb * 1024;
-        const chk = (c, q) => new Promise(r => c.toBlob(r, type, q));
-        const qualitySearch = async (cvs) => {
-            let qmn=0.0, qmx=1.0, qbst=null;
-            let f = await chk(cvs, 1.0); if (f.size <= tb) return f;
-            for (let i=0; i<7; i++) { let m=(qmn+qmx)/2; let t=await chk(cvs, m); if(t.size>tb) qmx=m; else { qmn=m; qbst=t; } }
-            return qbst || await chk(cvs, qmn);
-        };
-        let mn = 0.0, mx = 1.0, bst = null;
-        let f = await chk(canvas, 1.0);
-        if (f.size <= tb) return { w: canvas.width, h: canvas.height, size: f.size };
-        for (let i = 0; i < 7; i++) {
-            let m = (mn + mx) / 2; let t = await chk(canvas, m);
-            if (t.size > tb) mx = m; else { mn = m; bst = t; }
+        .seo-section {
+            margin-top: 2.5rem;
+            padding-bottom: 1rem;
         }
-        let best = bst || await chk(canvas, mn);
-        if (best.size > tb) {
-            let scale = 0.9; const tmpC = document.createElement('canvas'); const tmpCtx = tmpC.getContext('2d');
-            let lastFit = best; let lastW = canvas.width, lastH = canvas.height;
-            while (lastFit.size > tb && scale > 0.1) {
-                tmpC.width = Math.max(1, Math.round(canvas.width * scale)); tmpC.height = Math.max(1, Math.round(canvas.height * scale));
-                if (type === 'image/jpeg') { tmpCtx.fillStyle = '#FFFFFF'; tmpCtx.fillRect(0, 0, tmpC.width, tmpC.height); } else { tmpCtx.clearRect(0, 0, tmpC.width, tmpC.height); }
-                tmpCtx.imageSmoothingEnabled = true; tmpCtx.imageSmoothingQuality = 'high';
-                tmpCtx.drawImage(canvas, 0, 0, tmpC.width, tmpC.height);
-                lastFit = await qualitySearch(tmpC); lastW = tmpC.width; lastH = tmpC.height;
-                scale -= 0.1;
+
+        .seo-copy {
+            max-width: 850px;
+            color: var(--text-muted);
+            font-size: .82rem;
+            line-height: 1.7;
+        }
+
+        .seo-copy p {
+            margin: 0 0 .75rem;
+        }
+
+        .seo-copy p:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 600px) {
+            .seo-section { margin-top: 2rem; }
+        }
+
+    </style>
+
+    <style>
+        /* Informational content below the main workflow */
+        .info-section,
+        .process-section,
+        .trust-section {
+            margin-top: 2.5rem;
+        }
+
+        .info-section-heading {
+            max-width: 760px;
+            margin-bottom: 1.6rem;
+        }
+
+        .info-section-heading.compact {
+            margin-bottom: 1.4rem;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            margin-bottom: .55rem;
+            font-size: .68rem;
+            line-height: 1;
+            font-weight: 850;
+            letter-spacing: .16em;
+            color: var(--primary);
+        }
+
+        .info-section h2,
+        .process-section h2,
+        .trust-section h2 {
+            margin: 0;
+            font-size: clamp(1.45rem, 2.4vw, 2.15rem);
+            line-height: 1.08;
+            letter-spacing: -.035em;
+        }
+
+        .info-section-heading > p {
+            margin: .75rem 0 0;
+            max-width: 650px;
+            color: var(--text-muted);
+            line-height: 1.65;
+            font-size: .92rem;
+        }
+
+        .use-case-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .info-card {
+            position: relative;
+            min-height: 220px;
+            padding: 1.35rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            background: var(--glass-bg);
+            box-shadow: var(--glass-shadow);
+            overflow: hidden;
+            transition: transform .2s ease, border-color .2s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-3px);
+            border-color: color-mix(in srgb, var(--primary) 42%, var(--glass-border));
+        }
+
+        .info-card-number {
+            font-size: .7rem;
+            font-weight: 850;
+            letter-spacing: .12em;
+            color: var(--text-muted);
+            margin-bottom: 2.2rem;
+        }
+
+        .info-card h3 {
+            margin: 0 0 .65rem;
+            font-size: 1rem;
+            letter-spacing: -.015em;
+        }
+
+        .info-card p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: .82rem;
+            line-height: 1.6;
+        }
+
+        .info-card-tag {
+            position: absolute;
+            left: 1.35rem;
+            bottom: 1.15rem;
+            font-size: .6rem;
+            font-weight: 850;
+            letter-spacing: .13em;
+            color: var(--primary);
+        }
+
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .9rem;
+        }
+
+        .process-step {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            padding: 1.15rem 1.2rem;
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .process-step > span {
+            flex: 0 0 auto;
+            font-size: .68rem;
+            font-weight: 850;
+            letter-spacing: .1em;
+            color: var(--primary);
+            padding-top: .2rem;
+        }
+
+        .process-step h3 {
+            margin: 0 0 .35rem;
+            font-size: .92rem;
+        }
+
+        .process-step p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: .78rem;
+            line-height: 1.55;
+        }
+
+        .trust-section {
+            display: grid;
+            grid-template-columns: 1.25fr .75fr;
+            gap: 2rem;
+            align-items: center;
+            padding: 1.7rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            background: var(--glass-bg);
+        }
+
+        .trust-copy p {
+            margin: .7rem 0 0;
+            max-width: 620px;
+            color: var(--text-muted);
+            font-size: .84rem;
+            line-height: 1.65;
+        }
+
+        .trust-points {
+            display: grid;
+            gap: .65rem;
+        }
+
+        .trust-points > div {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: .65rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .trust-points strong {
+            font-size: .67rem;
+            letter-spacing: .12em;
+            color: var(--primary);
+        }
+
+        .trust-points span {
+            color: var(--text-muted);
+            font-size: .76rem;
+            text-align: right;
+        }
+
+        @media (max-width: 980px) {
+            .use-case-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .process-grid { grid-template-columns: 1fr; }
+            .trust-section { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            .info-section,
+            .process-section,
+            .trust-section { margin-top: 2rem; }
+            .use-case-grid { grid-template-columns: 1fr; }
+            .info-card { min-height: 190px; }
+            .trust-section { padding: 1.25rem; }
+            .trust-points > div { align-items: flex-start; flex-direction: column; gap: .2rem; }
+            .trust-points span { text-align: left; }
+        }
+    </style>
+
+    <style id="info-sections-ui-fix">
+        /* Keep decorative SVG/background layers behind all page content. */
+        body {
+            position: relative;
+        }
+
+        .bg-layer {
+            z-index: 0;
+        }
+
+        .ambient-orb,
+        .celestial-container {
+            z-index: 0;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Make informational content readable in both themes. */
+        .info-card,
+        .process-section,
+        .trust-section,
+        .seo-section {
+            position: relative;
+            z-index: 2;
+            isolation: isolate;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        [data-theme="dark"] .info-card,
+        [data-theme="dark"] .trust-section,
+        [data-theme="dark"] .seo-section {
+            background: rgba(15, 23, 42, 0.92);
+        }
+
+        [data-theme="light"] .info-card,
+        [data-theme="light"] .trust-section,
+        [data-theme="light"] .seo-section {
+            background: rgba(255, 255, 255, 0.90);
+        }
+
+        /* Tags stay in normal document flow instead of sitting over paragraph text. */
+        .info-card {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: visible;
+        }
+
+        .info-card-number {
+            margin-bottom: 1.5rem;
+            flex: 0 0 auto;
+        }
+
+        .info-card h3 {
+            flex: 0 0 auto;
+        }
+
+        .info-card p {
+            flex: 1 1 auto;
+        }
+
+        .info-card-tag {
+            position: static;
+            display: block;
+            margin-top: 1rem;
+            padding-top: .75rem;
+            border-top: 1px solid var(--glass-border);
+            font-size: .6rem;
+            line-height: 1;
+            flex: 0 0 auto;
+        }
+
+        /* The SEO block is a proper card rather than floating text over the background. */
+        .seo-section {
+            margin-top: 2.5rem;
+            padding: 1.7rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .seo-section .info-section-heading {
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .info-card {
+                min-height: 0;
             }
-            tmpC.width = 0; tmpC.height = 0;
-            return { w: lastW, h: lastH, size: lastFit.size };
+
+            .seo-section {
+                margin-top: 2rem;
+                padding: 1.25rem;
+            }
+
+            /* Keep the decorative moon/sun away from the reading area on small screens. */
+            .celestial-body {
+                width: 220px;
+                height: 220px;
+                margin-left: -110px;
+                top: 2%;
+            }
         }
-        return { w: canvas.width, h: canvas.height, size: best.size };
-    }
+    </style>
 
-    function renderPreview() {
-        const s = app.settings; let w=0, h=0;
-        if (app.mode === 'resize') {
-            if (app.resizeFiles.length===0) { resetPreview(); return; }
-            const selImg = app.resizeFiles.find(f => f.id === app.selectedResizeId) || app.resizeFiles[0];
-            let d = getResizeDim(selImg, s); w = d.w; h = d.h;
-        } else {
-            if (app.mergePics.length===0 && app.mergeSigs.length===0) { resetPreview(); return; }
-            let d = getMergeDim(s, app.mergePics[0], app.mergeSigs[0]); 
-            let hasPic = !!app.mergePics[0]; let hasSig = !!app.mergeSigs[0];
-            if(hasPic && hasSig) { w = d.fw; h = d.fh; }
-            else if (hasPic) { w = d.standalonePicW; h = d.standalonePicH; }
-            else { w = d.standaloneSigW; h = d.standaloneSigH; }
-        }
+</head>
+<body>
 
-        D.prevPlace.style.display = 'none'; D.prevCanvas.style.opacity = '1'; D.prevMeta.style.display = 'flex';
-        const scale = Math.min(1, 800 / Math.max(w, h)); D.prevCanvas.width = w * scale; D.prevCanvas.height = h * scale;
-        D.prevCtx.fillStyle = '#FFFFFF'; D.prevCtx.fillRect(0,0,D.prevCanvas.width, D.prevCanvas.height);
+    <!-- Cinematic Sunrise / Twilight Background Layers -->
+    <div class="bg-layer bg-moonlight"></div>
+    <div class="bg-layer bg-sunrise"></div>
 
-        if (app.mode === 'resize') {
-            const selImg = app.resizeFiles.find(f => f.id === app.selectedResizeId) || app.resizeFiles[0];
-            drawHQ(D.prevCtx, selImg.img, 0, 0, w*scale, h*scale);
-        } else {
-            let d = getMergeDim(s, app.mergePics[0], app.mergeSigs[0]);
-            let hasPic = !!app.mergePics[0]; let hasSig = !!app.mergeSigs[0];
+    <!-- Fine Detailed SVG Celestial Bodies -->
+    <div class="celestial-container">
+        <!-- Highly Detailed Moon -->
+        <svg class="celestial-body celestial-moon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0.6"/>
+                    <stop offset="40%" stop-color="#818cf8" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#312e81" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="moonBlur" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="8" />
+                </filter>
+                <clipPath id="moonClip"><circle cx="100" cy="100" r="30" /></clipPath>
+            </defs>
+            <circle cx="100" cy="100" r="80" fill="url(#moonGlow)" filter="url(#moonBlur)"/>
+            <circle cx="100" cy="100" r="30" fill="#f8fafc" />
+            <g clip-path="url(#moonClip)" fill="#cbd5e1" opacity="0.65">
+                <circle cx="86.36" cy="91.82" r="7.64" /><circle cx="88" cy="90.73" r="5.45" fill="#94a3b8"/>
+                <circle cx="110.91" cy="80.91" r="10.91" /><circle cx="114.18" cy="78.18" r="7.64" fill="#94a3b8"/>
+                <circle cx="97.27" cy="119.09" r="13.09" /><circle cx="94.55" cy="121.82" r="8.73" fill="#94a3b8"/>
+                <circle cx="116.36" cy="108.18" r="6.55" /><circle cx="78.18" cy="105.45" r="4.36" />
+            </g>
+            <circle cx="102.73" cy="97.27" r="30" fill="none" stroke="#94a3b8" stroke-width="4.36" opacity="0.4" filter="url(#moonBlur)"/>
+        </svg>
+
+        <!-- Highly Detailed Soft Sun -->
+        <svg class="celestial-body celestial-sun" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+                    <stop offset="30%" stop-color="#fef08a" stop-opacity="0.6"/>
+                    <stop offset="70%" stop-color="#fba11b" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="sunBlur" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="12" />
+                </filter>
+            </defs>
+            <circle cx="100" cy="100" r="80" fill="url(#sunGlow)" filter="url(#sunBlur)"/>
+            <circle cx="100" cy="100" r="30" fill="#fef08a" opacity="0.9"/>
+            <circle cx="100" cy="100" r="20" fill="#ffffff" filter="url(#sunBlur)"/>
+        </svg>
+    </div>
+
+    <div id="toast" class="toast">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <span id="toastMsg">Target size not met. Auto-resizing...</span>
+    </div>
+
+    <!-- Independent Side Floating THEME Toggle (Left) -->
+    <button id="sideThemeToggle" class="side-theme-toggle" aria-label="Toggle Theme">
+        <div class="theme-icon-container">
+            <svg class="svg-sun" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg class="svg-moon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+        <span class="toggle-text">THEME MODE</span>
+    </button>
+
+    <!-- Independent Side Floating SETTINGS Toggle (Right) -->
+    <button id="sideSettingsToggle" class="side-settings-toggle" aria-label="Toggle Dimensions & Output Settings">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        <span class="toggle-text">DIMENSIONS & OUTPUT</span>
+    </button>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <img src="imgmerge-icon.svg" alt="imgmerge logo" class="brand-logo">
+                <div class="brand-text">
+                    <h1>imgmerge</h1>
+                </div>
+            </div>
             
-            if (hasPic && hasSig) {
-                let picDx = (d.fw - d.standalonePicW) / 2; let sigDx = (d.fw - d.standaloneSigW) / 2;
-                drawHQ(D.prevCtx, app.mergePics[0].img, picDx*scale, 0, d.standalonePicW*scale, d.standalonePicH*scale);
-                drawHQ(D.prevCtx, app.mergeSigs[0].img, sigDx*scale, d.standalonePicH*scale, d.standaloneSigW*scale, d.standaloneSigH*scale);
-                D.prevCtx.strokeStyle = 'rgba(0,0,0,0.1)'; D.prevCtx.lineWidth = 1; D.prevCtx.beginPath(); D.prevCtx.moveTo(0, d.standalonePicH*scale); D.prevCtx.lineTo(d.fw*scale, d.standalonePicH*scale); D.prevCtx.stroke();
-            } else if (hasPic) {
-                drawHQ(D.prevCtx, app.mergePics[0].img, 0, 0, w*scale, h*scale);
-            } else {
-                drawHQ(D.prevCtx, app.mergeSigs[0].img, 0, 0, w*scale, h*scale);
-            }
-        }
+            <div class="header-right">
+                <div class="status-badge" aria-label="Privacy indicator: all processing happens locally">
+                    <div class="status-dot"></div> <span style="white-space: nowrap;">Local Processing</span>
+                </div>
+            </div>
+        </header>
+        <!-- Top-Level Workflow Switch -->
+        <div class="mode-switch">
+            <button class="mode-btn active" data-mode="merge">RESIZE OR MERGE</button>
+            <button class="mode-btn" data-mode="resize">BULK IMAGE RESIZE</button>
+        </div>
 
-        D.mDim.innerText = `${w} × ${h} px`;
+        <!-- Dynamic Upload Section -->
+        <div class="upload-wrapper">
+            <!-- Merge Upload (Picture + Signature) - Active by Default -->
+            <div id="uploadMerge" class="upload-section dual-upload active" style="display: grid;">
+                <label class="upload-zone" id="dzPic" tabindex="0">
+                    <div class="upload-title" style="color: var(--primary);">Picture</div>
+                    <svg class="dz-icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    <div><div class="upload-text">+ Add Picture</div><div class="upload-subtext">Drop picture image here</div></div>
+                    <input type="file" id="fiPic" accept="image/jpeg, image/png, image/webp" style="display: none;">
+                </label>
 
-        const type = s.outFmt==='png'?'image/png':(s.outFmt==='jpg'?'image/jpeg':(s.outFmt==='webp'?'image/webp':'image/jpeg'));
-        const tkb = parseFloat(s.outTarget);
-        const gen = ++app.previewGen;
-
-        if ((type==='image/jpeg'||type==='image/webp') && !isNaN(tkb) && tkb>0) {
-            // Build a full-resolution offscreen render (matching real export size) so the
-            // target-size search below produces an accurate size/dimension estimate.
-            const fullCanvas = document.createElement('canvas'); fullCanvas.width = w; fullCanvas.height = h;
-            const fctx = fullCanvas.getContext('2d');
-            fctx.fillStyle = '#FFFFFF'; fctx.fillRect(0,0,w,h);
-            if (app.mode === 'resize') {
-                const selImg = app.resizeFiles.find(f => f.id === app.selectedResizeId) || app.resizeFiles[0];
-                drawHQ(fctx, selImg.img, 0, 0, w, h);
-            } else {
-                let d = getMergeDim(s, app.mergePics[0], app.mergeSigs[0]);
-                let hasPic = !!app.mergePics[0]; let hasSig = !!app.mergeSigs[0];
-                if (hasPic && hasSig) {
-                    let picDx = (d.fw - d.standalonePicW) / 2; let sigDx = (d.fw - d.standaloneSigW) / 2;
-                    drawHQ(fctx, app.mergePics[0].img, picDx, 0, d.standalonePicW, d.standalonePicH);
-                    drawHQ(fctx, app.mergeSigs[0].img, sigDx, d.standalonePicH, d.standaloneSigW, d.standaloneSigH);
-                } else if (hasPic) {
-                    drawHQ(fctx, app.mergePics[0].img, 0, 0, w, h);
-                } else {
-                    drawHQ(fctx, app.mergeSigs[0].img, 0, 0, w, h);
-                }
-            }
-            D.mSize.innerText = `Estimating...`;
-            estimateTargetFit(fullCanvas, type, s).then(est => {
-                fullCanvas.width = 0; fullCanvas.height = 0;
-                if (gen !== app.previewGen) return; // a newer preview superseded this one
-                if (est) {
-                    D.mDim.innerText = `Est: ${est.w} × ${est.h} px`;
-                    D.mSize.innerText = `Est Size: ~${Math.round(est.size/1024)} KB (target ${Math.round(tkb)} KB)`;
-                }
-            });
-        } else {
-            setTimeout(() => {
-                if (gen !== app.previewGen) return;
-                let q = (parseFloat(s.outQual)||90)/100;
-                D.mSize.innerText = `Est Size: ~${Math.round((D.prevCanvas.toDataURL(type,q).length*3/4)/1024)} KB`;
-            }, 10);
-        }
-    }
-    function resetPreview() { D.prevCtx.clearRect(0,0,D.prevCanvas.width,D.prevCanvas.height); D.prevPlace.style.display='flex'; D.prevCanvas.style.opacity='0'; D.prevMeta.style.display='none'; }
-
-
-    /** PROCESSING & EXPORT (WITH CUSTOM PROMPTS) **/
-    let outBlobs = [];
-    
-    D.btnProcess.addEventListener('click', async () => {
-        const count = app.mode === 'resize' ? app.resizeFiles.length : Math.max(app.mergePics.length, app.mergeSigs.length);
-        if(count === 0) return;
-
-        D.modal.classList.add('active'); D.mActions.style.display='none'; 
-        D.mStats.style.display = count > 1 ? 'flex' : 'none'; 
-        D.mProg.style.width='0%'; outBlobs=[]; app.failedItems=[]; let ok=0, fail=0; 
-        D.stSuccess.innerText='0 Done'; D.stFail.innerText='0 Failed';
-        D.btnRetryFail.style.display = 'none';
-        
-        const s = app.settings; let type = s.outFmt==='png'?'image/png':(s.outFmt==='jpg'?'image/jpeg':(s.outFmt==='webp'?'image/webp':'image/jpeg')); let ext = s.outFmt==='jpeg'?'jpg':s.outFmt;
-        const oc = document.createElement('canvas'); const octx = oc.getContext('2d');
-        let autoResized = false; 
-
-        try {
-            if (app.mode === 'resize') {
-                D.mTitle.innerText = "Resizing Batch...";
-                for(let i=0; i<app.resizeFiles.length; i++) {
-                    const f = app.resizeFiles[i]; D.mText.innerText = `Processing: ${f.name}`; D.mProg.style.width = `${((i)/count)*100}%`;
-                    try {
-                        let d = getResizeDim(f, s); oc.width=d.w; oc.height=d.h;
-                        if(type==='image/jpeg'){ octx.fillStyle='#FFFFFF'; octx.fillRect(0,0,d.w,d.h); } else { octx.clearRect(0,0,d.w,d.h); }
-                        drawHQ(octx, f.img, 0,0,d.w,d.h);
-                        const blob = await expBlob(oc, type, s, () => autoResized = true);
-                        outBlobs.push({ name: `${sanitizeFilename(f.name.replace(/\.[^/.]+$/, ""))}_resized.${ext}`, blob: blob });
-                        ok++; D.stSuccess.innerText=`${ok} Done`;
-                    } catch(e) { fail++; D.stFail.innerText=`${fail} Failed`; app.failedItems.push(f); }
-                    await new Promise(r=>setTimeout(r,5));
-                }
-            } else {
-                D.mTitle.innerText = "Processing Pairs...";
-                for(let i=0; i<count; i++) {
-                    const p = app.mergePics[i]; const sg = app.mergeSigs[i];
-                    D.mText.innerText = `Processing Step ${i+1} of ${count}`; D.mProg.style.width = `${((i)/count)*100}%`;
-                    try {
-                        let d = getMergeDim(s, p, sg); 
-                        
-                        if (p && sg) {
-                            oc.width=d.fw; oc.height=d.fh;
-                            if(type==='image/jpeg'){ octx.fillStyle='#FFFFFF'; octx.fillRect(0,0,d.fw,d.fh); } else { octx.clearRect(0,0,d.fw,d.fh); }
-                            let picDx = (d.fw - d.standalonePicW) / 2; let sigDx = (d.fw - d.standaloneSigW) / 2;
-                            drawHQ(octx, p.img, picDx,0,d.standalonePicW,d.standalonePicH);
-                            drawHQ(octx, sg.img, sigDx,d.standalonePicH,d.standaloneSigW,d.standaloneSigH);
-                            const blob = await expBlob(oc, type, s, () => autoResized = true);
-                            let bname = sanitizeFilename(p.name.replace(/\.[^/.]+$/, ""));
-                            outBlobs.push({ name: `${bname}_merged.${ext}`, blob: blob });
-                        } else if (p) {
-                            oc.width=d.standalonePicW; oc.height=d.standalonePicH;
-                            if(type==='image/jpeg'){ octx.fillStyle='#FFFFFF'; octx.fillRect(0,0,d.standalonePicW,d.standalonePicH); } else { octx.clearRect(0,0,d.standalonePicW,d.standalonePicH); }
-                            drawHQ(octx, p.img, 0,0,d.standalonePicW,d.standalonePicH);
-                            const blob = await expBlob(oc, type, s, () => autoResized = true);
-                            let bname = sanitizeFilename(p.name.replace(/\.[^/.]+$/, ""));
-                            outBlobs.push({ name: `${bname}_resized.${ext}`, blob: blob });
-                        } else if (sg) {
-                            oc.width=d.standaloneSigW; oc.height=d.standaloneSigH;
-                            if(type==='image/jpeg'){ octx.fillStyle='#FFFFFF'; octx.fillRect(0,0,d.standaloneSigW,d.standaloneSigH); } else { octx.clearRect(0,0,d.standaloneSigW,d.standaloneSigH); }
-                            drawHQ(octx, sg.img, 0,0,d.standaloneSigW,d.standaloneSigH);
-                            const blob = await expBlob(oc, type, s, () => autoResized = true);
-                            let bname = sanitizeFilename(sg.name.replace(/\.[^/.]+$/, ""));
-                            outBlobs.push({ name: `${bname}_resized.${ext}`, blob: blob });
-                        }
-                        ok++; D.stSuccess.innerText=`${ok} Done`;
-                    } catch(e) { fail++; D.stFail.innerText=`${fail} Failed`; app.failedItems.push({p, sg}); }
-                    await new Promise(r=>setTimeout(r,5));
-                }
-            }
+                <label class="upload-zone zone-secondary" id="dzSig" tabindex="0">
+                    <div class="upload-title" style="color: var(--secondary);">Signature</div>
+                    <svg class="dz-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    <div><div class="upload-text">+ Add Signature</div><div class="upload-subtext">Drop signature image here</div></div>
+                    <input type="file" id="fiSig" accept="image/jpeg, image/png, image/webp" style="display: none;">
+                </label>
+            </div>
             
-            oc.width=0; oc.height=0; D.mProg.style.width="100%";
-            if(autoResized) showToast(`Output auto-scaled to meet ${s.outTarget} KB limit.`);
+            <!-- Batch Resize Upload (Multiple Images) -->
+            <div id="uploadResize" class="upload-section" style="display: none;">
+                <label class="upload-zone" id="dzResize" tabindex="0">
+                    <div class="upload-title">Bulk Image Resize</div>
+                    <svg class="dz-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    <div><div class="upload-text">+ Add Multiple Images</div><div class="upload-subtext">Drop your images here or click to browse</div></div>
+                    <input type="file" id="fiResize" multiple accept="image/jpeg, image/png, image/webp" style="display: none;">
+                </label>
+            </div>
+        </div>
 
-            if(fail === 0) {
-                D.mTitle.innerText = "Complete!";
-                D.mText.innerText = "Please provide a file name...";
-                
-                setTimeout(() => {
-                    if(outBlobs.length > 1) { D.btnZip.click(); } else if(outBlobs.length===1) { D.btnSingle.click(); }
-                    D.modal.classList.remove('active'); 
-                    outBlobs=[];
-                }, 100);
+        <!-- Workspace Grid -->
+        <div class="workspace" id="mainWorkspace">
+            
+            <!-- LEFT: LIST PANEL -->
+            <div class="glass-panel" id="listPanel">
+                <div class="panel-header">
+                    <span class="panel-title" id="listTitle">Picture + Signature Pairs</span>
+                    <button class="btn-danger-outline" id="btnClearAll">Clear All</button>
+                </div>
+                <div class="panel-body" style="padding-bottom: 1rem;">
+                    <div class="list-header"><span id="listCount">0 Pairs</span></div>
+                    <div class="img-list" id="itemList"></div>
+                </div>
+            </div>
 
-            } else {
-                D.mTitle.innerText = "Completed with Errors";
-                D.mText.innerText = "Some images failed processing.";
-                D.mActions.style.display='flex';
-                D.btnRetryFail.style.display = 'inline-flex';
-                if(outBlobs.length > 1) { D.btnZip.style.display='inline-flex'; D.btnSingle.style.display='none'; }
-                else if(outBlobs.length===1) { D.btnZip.style.display='none'; D.btnSingle.style.display='inline-flex'; }
-            }
+            <!-- CENTER: PREVIEW PANEL -->
+            <div class="glass-panel" id="previewPanel">
+                <div class="panel-header" style="justify-content: center;">
+                    <span class="panel-title">Live Preview</span>
+                </div>
+                <div class="panel-body" style="padding: 1rem;">
+                    <div class="preview-container">
+                        <div class="preview-placeholder" id="previewPlaceholder">
+                            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                            Add image to view live preview
+                        </div>
+                        <canvas id="previewCanvas" style="opacity: 0;"></canvas>
+                        <div class="preview-meta" id="previewMeta" style="display: none;">
+                            <span class="preview-meta-dim" id="metaDimensions">0 × 0 px</span>
+                            <span class="preview-meta-size" id="metaSize">~0 KB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        } catch(e) { D.mTitle.innerText="Error"; D.mText.innerText="Critical processing failure."; D.mActions.style.display='flex'; }
-    });
-
-    D.btnRetryFail.addEventListener('click', () => {
-        if(app.mode === 'resize') { app.resizeFiles = [...app.failedItems]; }
-        else {
-            app.mergePics = app.failedItems.map(i => i.p).filter(Boolean);
-            app.mergeSigs = app.failedItems.map(i => i.sg).filter(Boolean);
-        }
-        updateListUI(); queuePreview(); D.modal.classList.remove('active');
-    });
-
-    async function expBlob(canvas, type, s, onAutoResize) {
-        return new Promise(res => {
-            const tkb = parseFloat(s.outTarget);
-            if ((type==='image/jpeg'||type==='image/webp') && !isNaN(tkb) && tkb>0) {
-                const tb = tkb*1024; let mn=0.0, mx=1.0, bst=null; const chk = (c, q) => new Promise(r => c.toBlob(r, type, q));
-                const qualitySearch = async (cvs) => {
-                    let qmn=0.0, qmx=1.0, qbst=null;
-                    let f = await chk(cvs, 1.0); if (f.size <= tb) return f;
-                    for (let i=0; i<7; i++) { let m=(qmn+qmx)/2; let t=await chk(cvs, m); if(t.size>tb) qmx=m; else { qmn=m; qbst=t; } }
-                    return qbst || await chk(cvs, qmn);
-                };
-                const srch = async (cvs) => { 
-                    let f = await chk(cvs, 1.0); if(f.size <= tb) return res(f); 
-                    for(let i=0; i<7; i++) { let m=(mn+mx)/2; let t=await chk(cvs, m); if(t.size>tb) mx=m; else { mn=m; bst=t; } } 
-                    let best = bst || await chk(cvs, mn);
+            <!-- RIGHT: CONTROLS PANEL -->
+            <div class="glass-panel" id="settingsPanel">
+                <div class="panel-header">
+                    <span class="panel-title">Dimensions & Output</span>
+                    <button class="btn-ghost" id="btnResetSettings">Reset</button>
+                </div>
+                <div class="panel-body">
                     
-                    if(best.size > tb) {
-                        if(onAutoResize) onAutoResize();
-                        let scale = 0.9; let tmpC = document.createElement('canvas'); let tmpCtx = tmpC.getContext('2d');
-                        let lastFit = best;
-                        while(lastFit.size > tb && scale > 0.1) {
-                            tmpC.width = Math.max(1, Math.round(cvs.width * scale)); tmpC.height = Math.max(1, Math.round(cvs.height * scale));
-                            if (type === 'image/jpeg') { tmpCtx.fillStyle = '#FFFFFF'; tmpCtx.fillRect(0, 0, tmpC.width, tmpC.height); } else { tmpCtx.clearRect(0, 0, tmpC.width, tmpC.height); }
-                            tmpCtx.imageSmoothingEnabled = true; tmpCtx.imageSmoothingQuality = 'high';
-                            tmpCtx.drawImage(cvs, 0, 0, tmpC.width, tmpC.height);
-                            lastFit = await qualitySearch(tmpC); scale -= 0.1;
-                        }
-                        return res(lastFit);
-                    }
-                    res(best); 
-                }; srch(canvas);
-            } else { canvas.toBlob(res, type, (parseFloat(s.outQual)||90)/100); }
-        });
-    }
+                    <!-- MERGE SETTINGS -->
+                    <div id="settingsMerge" class="settings-group active">
+                        
+                        <div class="merge-dim-row">
+                            <div class="dim-col">
+                                <span class="control-label" style="color: var(--primary);">Picture Dimensions</span>
+                                <div class="linker-container" style="margin-bottom: 0;">
+                                    <div class="linker-inputs">
+                                        <div class="linker-row"><span>W</span><input type="number" id="pW" placeholder="Auto"></div>
+                                        <div class="linker-row"><span>H</span><input type="number" id="pH" placeholder="Auto"></div>
+                                    </div>
+                                    <button class="linker-lock aspect-lock locked" id="pLock">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8V7c0-2.76-2.24-5-5-5S7 4.24 7 7v1H5v12h14V8h-2zM9 7c0-1.65 1.35-3 3-3s3 1.35 3 3v1H9V7zm3 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                                    </button>
+                                    <div class="linker-unit">
+                                        <select id="pUnit"><option value="px">px</option><option value="%">%</option><option value="cm">cm</option><option value="mm">mm</option></select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="dim-col">
+                                <span class="control-label" style="color: var(--secondary);">Signature Dimensions</span>
+                                <div class="linker-container" style="margin-bottom: 0;">
+                                    <div class="linker-inputs">
+                                        <div class="linker-row"><span>W</span><input type="number" id="sW" placeholder="Auto"></div>
+                                        <div class="linker-row"><span>H</span><input type="number" id="sH" placeholder="Auto"></div>
+                                    </div>
+                                    <button class="linker-lock aspect-lock locked" id="sLock">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8V7c0-2.76-2.24-5-5-5S7 4.24 7 7v1H5v12h14V8h-2zM9 7c0-1.65 1.35-3 3-3s3 1.35 3 3v1H9V7zm3 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                                    </button>
+                                    <div class="linker-unit">
+                                        <select id="sUnit"><option value="px">px</option><option value="%">%</option><option value="cm">cm</option><option value="mm">mm</option></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    D.btnSingle.addEventListener('click', () => { 
-        if(!outBlobs.length) return; 
+                    <!-- RESIZE SETTINGS -->
+                    <div id="settingsResize" class="settings-group">
+                        <span class="control-label">Batch Dimensions</span>
+                        <div class="linker-container">
+                            <div class="linker-inputs">
+                                <div class="linker-row"><span>W</span><input type="number" id="rW" placeholder="Auto"></div>
+                                <div class="linker-row"><span>H</span><input type="number" id="rH" placeholder="Auto"></div>
+                            </div>
+                            <button class="linker-lock aspect-lock locked" id="rLock">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8V7c0-2.76-2.24-5-5-5S7 4.24 7 7v1H5v12h14V8h-2zM9 7c0-1.65 1.35-3 3-3s3 1.35 3 3v1H9V7zm3 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                            </button>
+                            <div class="linker-unit">
+                                <select id="rUnit"><option value="px">px</option><option value="%">%</option><option value="cm">cm</option><option value="mm">mm</option></select>
+                            </div>
+                        </div>
+                        <div class="control-row" style="margin-bottom: 1rem;">
+                            <div class="control-group">
+                                <label class="control-label">Quick Preset</label>
+                                <select id="rPreset"><option value="custom">Custom</option><option value="original">Original</option><option value="hd">1920 × 1080</option><option value="social">1080 × 1080</option><option value="50p">50% Scale</option></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="border: none; border-top: 1px solid var(--glass-border); margin: 0.5rem 0;">
+
+                    <!-- GLOBAL OUTPUT SETTINGS -->
+                    <div class="control-row" style="margin-bottom: 1rem;">
+                        <div class="control-group"><label class="control-label">Format</label><select id="outFmt"><option value="jpeg">JPEG</option><option value="jpg">JPG</option><option value="png">PNG</option><option value="webp">WEBP</option></select></div>
+                        <div class="control-group"><label class="control-label">DPI</label><input type="number" id="outDPI" value="300" min="1"></div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group"><label class="control-label">Quality (%)</label><input type="number" id="outQual" value="90" min="1" max="100"></div>
+                        <div class="control-group"><label class="control-label" style="color: var(--warning);">Target Size (KB)</label><input type="number" id="outTarget" placeholder="Optional"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="primary-action-bar">
+            <button class="btn btn-primary" id="btnProcess" disabled>PROCESS & DOWNLOAD MERGED</button>
+        </div>
         
-        let ext = outBlobs[0].name.split('.').pop();
-        let defaultName = "processed image." + ext;
-        let fileName = prompt("Enter file name to save:", defaultName);
-        if(!fileName) return; 
-        fileName = sanitizeFilename(fileName);
+        <section class="info-section" aria-labelledby="use-cases-title">
+            <div class="info-section-heading">
+                <span class="eyebrow">USE imgmerge When</span>
+                <h2 id="use-cases-title">Simple image work that should stay simple.</h2>
+                <p>Use imgmerge for quick, repeatable image tasks without uploading your files to a server.</p>
+            </div>
 
-        if(!fileName.toLowerCase().endsWith(`.${ext}`)) fileName += `.${ext}`;
+            <div class="use-case-grid">
+                <article class="info-card">
+                    <div class="info-card-number">01</div>
+                    <h3>Photo + signature</h3>
+                    <p>Government and educational verification workflows increasingly require a student photo with a signature, especially for identity verification in board examinations and entrance-level exams. Combine both into one image for these requirements.</p>
+                    <span class="info-card-tag">MERGE</span>
+                </article>
 
-        const u = URL.createObjectURL(outBlobs[0].blob); 
-        const a = document.createElement('a'); 
-        a.href=u; a.download=fileName; 
-        document.body.appendChild(a); a.click(); document.body.removeChild(a); 
-        setTimeout(()=>URL.revokeObjectURL(u),1000); 
-    });
+                <article class="info-card">
+                    <div class="info-card-number">02</div>
+                    <h3>Batch resizing</h3>
+                    <p>Resize multiple images to the same dimensions or scale when you need a consistent set for printing, uploading, or document preparation.</p>
+                    <span class="info-card-tag">BULK RESIZE</span>
+                </article>
 
-    D.btnZip.addEventListener('click', async () => {
-        if(!outBlobs.length || !window.JSZip) return; 
-        
-        let fileName = prompt("Enter ZIP file name to save:", "Batch_Output.zip");
-        if(!fileName) return; 
-        fileName = sanitizeFilename(fileName);
-        if(!fileName.toLowerCase().endsWith('.zip')) fileName += '.zip';
+                <article class="info-card">
+                    <div class="info-card-number">03</div>
+                    <h3>Processed output options</h3>
+                    <p>Choose the processed image output that fits your workflow, with control over dimensions, format, quality, DPI, and optional target file size.</p>
+                    <span class="info-card-tag">OUTPUT</span>
+                </article>
 
-        D.mText.innerText = "Creating ZIP..."; D.btnZip.disabled=true;
-        try { 
-            const zip = new JSZip(); 
-            outBlobs.forEach(i => zip.file(i.name, i.blob)); 
-            const zb = await zip.generateAsync({type:"blob"}); 
-            const u = URL.createObjectURL(zb); 
-            const a = document.createElement('a'); 
-            a.href=u; a.download=fileName; 
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); 
-            setTimeout(()=>URL.revokeObjectURL(u),1000); 
-            D.mText.innerText = "ZIP Downloaded."; 
-        } catch(e) { 
-            D.mText.innerText = "ZIP generation failed."; 
-        } 
-        D.btnZip.disabled=false;
-    });
+                <article class="info-card">
+                    <div class="info-card-number">04</div>
+                    <h3>Private, local workflows</h3>
+                    <p>Useful for images you would rather not send to an online processing service. Your browser handles the image processing locally.</p>
+                    <span class="info-card-tag">LOCAL</span>
+                </article>
+            </div>
+        </section>
 
-    D.btnClose.addEventListener('click', () => { D.modal.classList.remove('active'); outBlobs=[]; });
+        <section class="process-section" aria-labelledby="how-it-works-title">
+            <div class="info-section-heading compact">
+                <span class="eyebrow">HOW IT WORKS</span>
+                <h2 id="how-it-works-title">Three steps from source image to final file.</h2>
+            </div>
 
-    /** RESET SETTINGS **/
-    D.btnResetSettings.addEventListener('click', () => {
-        const defaults = {
-            mode: 'merge', showSettings: true,
-            rUnit: 'px', rW: '', rH: '', rLock: true, rPreset: 'custom',
-            pUnit: 'px', pW: '', pH: '', pLock: true,
-            sUnit: 'px', sW: '', sH: '', sLock: true,
-            outFmt: 'jpeg', outDPI: 300, outQual: 90, outTarget: ''
-        };
-        app.settings = {...defaults};
-        app.mode = 'merge';
-        Object.keys(D.inputs).forEach(k => { if(D.inputs[k]) D.inputs[k].value = app.settings[k] ?? ''; });
-        D.locks.rLock.classList.toggle('locked', true);
-        D.locks.pLock.classList.toggle('locked', true);
-        D.locks.sLock.classList.toggle('locked', true);
-        D.modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === 'merge'));
-        D.upResize.style.display = 'none'; D.upResize.classList.remove('active');
-        D.upMerge.style.display = 'grid'; D.upMerge.classList.add('active');
-        D.setResize.style.display = 'none'; D.setResize.classList.remove('active');
-        D.setMerge.style.display = 'block'; D.setMerge.classList.add('active');
-        toggleWorkspacePanels();
-        saveSettings();
-        queuePreview();
-        showToast('Settings reset to defaults');
-    });
+            <div class="process-grid">
+                <div class="process-step">
+                    <span>01</span>
+                    <div>
+                        <h3>Add your images</h3>
+                        <p>Upload a picture and signature for merging, or add multiple images for bulk resizing.</p>
+                    </div>
+                </div>
+                <div class="process-step">
+                    <span>02</span>
+                    <div>
+                        <h3>Set the output</h3>
+                        <p>Choose dimensions, aspect-ratio locking, format, DPI, quality, and optional target size.</p>
+                    </div>
+                </div>
+                <div class="process-step">
+                    <span>03</span>
+                    <div>
+                        <h3>Process & download</h3>
+                        <p>Process the images and download the finished file or ZIP directly from the app.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    /** PERSISTENCE **/
-    function saveSettings() { localStorage.setItem('resMergeStudioPref', JSON.stringify(app.settings)); }
-    function loadSettings() {
-        try {
-            const sv = localStorage.getItem('resMergeStudioPref');
-            if(sv) {
-                app.settings = {...app.settings, ...JSON.parse(sv)};
-                Object.keys(D.inputs).forEach(k => { if(D.inputs[k]) D.inputs[k].value = app.settings[k]||''; });
-                
-                if (typeof app.settings.showSettings === 'undefined') app.settings.showSettings = true;
-                
-                D.locks.rLock.classList.toggle('locked', app.settings.rLock); D.locks.pLock.classList.toggle('locked', app.settings.pLock); D.locks.sLock.classList.toggle('locked', app.settings.sLock);
-            }
-        } catch(e){}
-        
-        app.mode = app.settings.mode = 'merge'; 
-        D.modeBtns.forEach(b => b.classList.remove('active')); 
-        document.querySelector('.mode-btn[data-mode="merge"]').classList.add('active');
-        
-        D.upResize.style.display = 'none'; D.upResize.classList.remove('active'); 
-        D.upMerge.style.display = 'grid'; D.upMerge.classList.add('active'); 
-        D.setResize.style.display = 'none'; D.setResize.classList.remove('active'); 
-        D.setMerge.style.display = 'block'; D.setMerge.classList.add('active'); 
-        
-        toggleWorkspacePanels();
-    }
-    
-    document.addEventListener('DOMContentLoaded', loadSettings);
+        <section class="trust-section" aria-label="Privacy and workflow notes">
+            <div class="trust-copy">
+                <span class="eyebrow">BUILT FOR QUICK TASKS</span>
+                <h2>No account. No upload queue. No unnecessary steps.</h2>
+                <p>imgmerge is designed as a focused browser utility: add your images, set the required output, process them, and move on.</p>
+            </div>
+            <div class="trust-points">
+                <div><strong>LOCAL</strong><span>Browser-based processing</span></div>
+                <div><strong>BATCH</strong><span>Process multiple images</span></div>
+                <div><strong>EXPORT</strong><span>Download files or ZIPs</span></div>
+            </div>
+        </section>
+
+        <section class="seo-section" aria-label="Image processing tools">
+            <div class="info-section-heading">
+                <span class="eyebrow">IMAGE TOOLS</span>
+                <h2>Fast, simple and reliable image processing online.</h2>
+                <p>Resize, compress, merge and prepare images with an easy-to-use image utility designed for everyday digital workflows.</p>
+            </div>
+            <div class="seo-copy">
+                <p>Whether you need to resize an image, compress a photo, merge images, or prepare files for online forms and documents, imgmerge provides practical image processing tools in one place.</p>
+                <p>Adjust image dimensions, quality and output settings to create images ready for websites, applications, documents, printing and digital submissions.</p>
+            </div>
+        </section>
+
+
+        <footer>
+            2026 © All rights reserved - imgmerge
+        </footer>
+    </div>
+
+    <!-- Processing Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <h3 class="modal-title" id="mTitle" style="font-size: 1.25rem; font-weight: 800;">Processing</h3>
+            <p id="mText" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Please wait...</p>
+            
+            <div class="progress-track"><div class="progress-fill" id="mProg"></div></div>
+            
+            <div id="mStats" style="display: none; justify-content: space-around; font-size: 0.85rem; font-weight: 700; margin-bottom: 1.5rem;">
+                <span style="color: var(--success);" id="stSuccess">0 Done</span>
+                <span style="color: var(--danger);" id="stFail">0 Failed</span>
+            </div>
+            
+            <div class="modal-actions" id="mActions">
+                <button class="btn btn-warning" id="btnRetryFail" style="display: none;">Retry Failed</button>
+                <button class="btn btn-primary" id="btnZip" style="display: none;">Download ZIP</button>
+                <button class="btn btn-primary" id="btnSingle" style="display: none;">Download File</button>
+                <button class="btn btn-ghost" id="btnClose" style="border: 1px solid var(--glass-border);">Close</button>
+            </div>
+        </div>
+    </div>
+
+<script src="./app.js"></script>
+</body>
+</html>
