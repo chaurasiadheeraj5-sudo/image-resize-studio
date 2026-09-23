@@ -150,6 +150,16 @@
     const savedTheme = localStorage.getItem('resizeMergeTheme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
 
+    // Same rule applies on first load as on every toggle: whichever SVG
+    // matches the starting theme should only show briefly, then fade away and
+    // stay hidden until the user actually toggles the theme.
+    const initiallyVisible = savedTheme === 'light' ? celestialSun : celestialMoon;
+    clearCelestialFade(initiallyVisible);
+    initiallyVisible._holdTimer = setTimeout(() => {
+        initiallyVisible._holdTimer = null;
+        fadeOutCelestial(initiallyVisible);
+    }, CELESTIAL_HOLD_MS);
+
     /** TOAST NOTIFICATION **/
     let toastTimeout;
     function showToast(msg) {
