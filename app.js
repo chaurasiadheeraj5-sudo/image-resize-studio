@@ -28,13 +28,116 @@
         }
     };
 
+    /** HEADER HEIGHT SYNC **/
+    // header is position:fixed (so it can span the full page width, independent
+    // of .app-container's max-width and the side-toggle gutter). Since that takes
+    // it out of normal flow, measure its real rendered height — which can change
+    // across breakpoints or if its content wraps — into a CSS variable that
+    // .app-container's padding-top uses to reserve the equivalent space.
+    const headerEl = document.querySelector('header');
+    function syncHeaderHeight() {
+        if (!headerEl) return;
+        document.documentElement.style.setProperty('--header-height', headerEl.offsetHeight + 'px');
+    }
+    syncHeaderHeight();
+    window.addEventListener('resize', syncHeaderHeight);
+    if (window.ResizeObserver) { new ResizeObserver(syncHeaderHeight).observe(headerEl); }
+
     /** TOGGLES & THEME **/
     const sideThemeToggle = document.getElementById('sideThemeToggle');
     const sideSettingsToggle = document.getElementById('sideSettingsToggle');
     const mainWorkspace = document.getElementById('mainWorkspace');
 
+    // The big decorative Sun/Moon SVGs. Their "incoming" animation (position +
+    // fade-in) is still fully driven by the existing --moon-op/--sun-op CSS
+    // variables tied to [data-theme] — untouched below. What we add here is
+    // explicit control of the "outgoing" SVG so it reliably fades opacity 1 -> 0
+    // over exactly 2s and is only then taken out of view/interaction, instead of
+    // being left at visibility:visible indefinitely once opacity hits 0.
+    const celestialMoon = document.querySelector('.celestial-moon');
+    const celestialSun = document.querySelector('.celestial-sun');
+
+    function clearCelestialFade(el) {
+        if (!el) return;
+        if (el._fadeOutTimer) { clearTimeout(el._fadeOutTimer); el._fadeOutTimer = null; }
+        if (el._holdTimer) { clearTimeout(el._holdTimer); el._holdTimer = null; }
+        // Release our inline overrides so the element goes back to being fully
+        // controlled by the existing CSS-variable-driven theme system.
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.visibility = '';
+        el.style.pointerEvents = '';
+        el.style.willChange = '';
+    }
+
+    function fadeOutCelestial(el) {
+        if (!el) return;
+        // Repeated toggles: cancel any fade-out already in progress for this
+        // element so we never stack multiple pending hide callbacks on it.
+        if (el._fadeOutTimer) { clearTimeout(el._fadeOutTimer); el._fadeOutTimer = null; }
+        // Make sure it's interactable/visible right up until the fade starts.
+        el.style.visibility = 'visible';
+        el.style.pointerEvents = 'none';
+        // Hint the browser to promote this to its own compositor layer before
+        // the animation starts, so the 2s opacity fade runs on the compositor
+        // thread instead of competing with the rest of the theme-wide repaint
+        // (many other elements are also changing background/border/box-shadow
+        // at the same moment) — this is what was causing the fade to visibly
+        // stutter/flash on real mobile hardware even though it looked fine in
+        // fast desktop testing.
+        el.style.willChange = 'opacity';
+        // Defer to the next two animation frames (instead of forcing a
+        // synchronous layout reflow via el.offsetWidth) so the browser has
+        // registered the current opacity before we change it — this reliably
+        // triggers the transition without blocking the main thread mid-toggle.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                el.style.transition = 'opacity 2s ease';
+                el.style.opacity = '0';
+            });
+        });
+        el._fadeOutTimer = setTimeout(() => {
+            // Only now, after the full 2s fade has actually completed, remove it
+            // from rendering/interaction entirely.
+            el.style.visibility = 'hidden';
+            el.style.willChange = '';
+            el._fadeOutTimer = null;
+        }, 2000);
+    }
+
+    // Neither SVG should stay on screen permanently — each one should only be
+    // visible for a moment right after the toggle that revealed it, then fade
+    // away and stay hidden until the theme is toggled again. This is how long
+    // the incoming SVG's existing appear animation gets to play/settle before
+    // it, too, starts its own 2s fade-out.
+    const CELESTIAL_HOLD_MS = 2000;
+
     sideThemeToggle.addEventListener('click', () => {
-        const nxt = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        const current = document.documentElement.getAttribute('data-theme');
+        const nxt = current === 'light' ? 'dark' : 'light';
+
+        // Whichever SVG is currently the visible one is the "outgoing" one for
+        // this toggle; the other is "incoming".
+        const outgoing = current === 'light' ? celestialSun : celestialMoon;
+        const incoming = current === 'light' ? celestialMoon : celestialSun;
+
+        // Cancel anything already in flight on both so rapid toggling never
+        // stacks timers or leaves a stale fade running.
+        clearCelestialFade(outgoing);
+        clearCelestialFade(incoming);
+
+        // Outgoing is already visible — fade it out right away, same as before.
+        fadeOutCelestial(outgoing);
+
+        // Incoming plays its existing transform/opacity "appear" animation
+        // completely untouched, then — instead of staying visible forever —
+        // automatically fades back out too, so it never remains on screen; it
+        // will only reappear on the next toggle.
+        incoming._holdTimer = setTimeout(() => {
+            incoming._holdTimer = null;
+            fadeOutCelestial(incoming);
+        }, CELESTIAL_HOLD_MS);
+
         document.documentElement.setAttribute('data-theme', nxt); localStorage.setItem('resizeMergeTheme', nxt);
     });
 
@@ -62,7 +165,7 @@
         modeBtns: document.querySelectorAll('.mode-btn'), upResize: document.getElementById('uploadResize'), upMerge: document.getElementById('uploadMerge'),
         dzResize: document.getElementById('dzResize'), fiResize: document.getElementById('fiResize'), dzPic: document.getElementById('dzPic'), fiPic: document.getElementById('fiPic'), dzSig: document.getElementById('dzSig'), fiSig: document.getElementById('fiSig'),
         listTitle: document.getElementById('listTitle'), listCount: document.getElementById('listCount'), itemList: document.getElementById('itemList'), btnClearAll: document.getElementById('btnClearAll'),
-        setResize: document.getElementById('settingsResize'), setMerge: document.getElementById('settingsMerge'), btnProcess: document.getElementById('btnProcess'),
+        setResize: document.getElementById('settingsResize'), setMerge: document.getElementById('settingsMerge'), btnResetSettings: document.getElementById('btnResetSettings'), btnProcess: document.getElementById('btnProcess'),
         prevCanvas: document.getElementById('previewCanvas'), prevCtx: document.getElementById('previewCanvas').getContext('2d'), prevPlace: document.getElementById('previewPlaceholder'), prevMeta: document.getElementById('previewMeta'), mDim: document.getElementById('metaDimensions'), mSize: document.getElementById('metaSize'),
         modal: document.getElementById('modal'), mTitle: document.getElementById('mTitle'), mText: document.getElementById('mText'), mProg: document.getElementById('mProg'), mStats: document.getElementById('mStats'), stSuccess: document.getElementById('stSuccess'), stFail: document.getElementById('stFail'), mActions: document.getElementById('mActions'), btnZip: document.getElementById('btnZip'), btnSingle: document.getElementById('btnSingle'), btnClose: document.getElementById('btnClose'), btnRetryFail: document.getElementById('btnRetryFail'),
         inputs: {
@@ -357,6 +460,12 @@
         if (!((type === 'image/jpeg' || type === 'image/webp') && !isNaN(tkb) && tkb > 0)) return null;
         const tb = tkb * 1024;
         const chk = (c, q) => new Promise(r => c.toBlob(r, type, q));
+        const qualitySearch = async (cvs) => {
+            let qmn=0.0, qmx=1.0, qbst=null;
+            let f = await chk(cvs, 1.0); if (f.size <= tb) return f;
+            for (let i=0; i<7; i++) { let m=(qmn+qmx)/2; let t=await chk(cvs, m); if(t.size>tb) qmx=m; else { qmn=m; qbst=t; } }
+            return qbst || await chk(cvs, qmn);
+        };
         let mn = 0.0, mx = 1.0, bst = null;
         let f = await chk(canvas, 1.0);
         if (f.size <= tb) return { w: canvas.width, h: canvas.height, size: f.size };
@@ -366,13 +475,15 @@
         }
         let best = bst || await chk(canvas, mn);
         if (best.size > tb) {
-            let scale = 0.85; const tmpC = document.createElement('canvas'); const tmpCtx = tmpC.getContext('2d');
+            let scale = 0.9; const tmpC = document.createElement('canvas'); const tmpCtx = tmpC.getContext('2d');
             let lastFit = best; let lastW = canvas.width, lastH = canvas.height;
             while (lastFit.size > tb && scale > 0.1) {
                 tmpC.width = Math.max(1, Math.round(canvas.width * scale)); tmpC.height = Math.max(1, Math.round(canvas.height * scale));
+                if (type === 'image/jpeg') { tmpCtx.fillStyle = '#FFFFFF'; tmpCtx.fillRect(0, 0, tmpC.width, tmpC.height); } else { tmpCtx.clearRect(0, 0, tmpC.width, tmpC.height); }
+                tmpCtx.imageSmoothingEnabled = true; tmpCtx.imageSmoothingQuality = 'high';
                 tmpCtx.drawImage(canvas, 0, 0, tmpC.width, tmpC.height);
-                lastFit = await chk(tmpC, 0.4); lastW = tmpC.width; lastH = tmpC.height;
-                scale -= 0.15;
+                lastFit = await qualitySearch(tmpC); lastW = tmpC.width; lastH = tmpC.height;
+                scale -= 0.1;
             }
             tmpC.width = 0; tmpC.height = 0;
             return { w: lastW, h: lastH, size: lastFit.size };
@@ -575,6 +686,12 @@
             const tkb = parseFloat(s.outTarget);
             if ((type==='image/jpeg'||type==='image/webp') && !isNaN(tkb) && tkb>0) {
                 const tb = tkb*1024; let mn=0.0, mx=1.0, bst=null; const chk = (c, q) => new Promise(r => c.toBlob(r, type, q));
+                const qualitySearch = async (cvs) => {
+                    let qmn=0.0, qmx=1.0, qbst=null;
+                    let f = await chk(cvs, 1.0); if (f.size <= tb) return f;
+                    for (let i=0; i<7; i++) { let m=(qmn+qmx)/2; let t=await chk(cvs, m); if(t.size>tb) qmx=m; else { qmn=m; qbst=t; } }
+                    return qbst || await chk(cvs, qmn);
+                };
                 const srch = async (cvs) => { 
                     let f = await chk(cvs, 1.0); if(f.size <= tb) return res(f); 
                     for(let i=0; i<7; i++) { let m=(mn+mx)/2; let t=await chk(cvs, m); if(t.size>tb) mx=m; else { mn=m; bst=t; } } 
@@ -582,12 +699,14 @@
                     
                     if(best.size > tb) {
                         if(onAutoResize) onAutoResize();
-                        let scale = 0.85; let tmpC = document.createElement('canvas'); let tmpCtx = tmpC.getContext('2d');
+                        let scale = 0.9; let tmpC = document.createElement('canvas'); let tmpCtx = tmpC.getContext('2d');
                         let lastFit = best;
                         while(lastFit.size > tb && scale > 0.1) {
-                            tmpC.width = Math.max(1, cvs.width * scale); tmpC.height = Math.max(1, cvs.height * scale);
+                            tmpC.width = Math.max(1, Math.round(cvs.width * scale)); tmpC.height = Math.max(1, Math.round(cvs.height * scale));
+                            if (type === 'image/jpeg') { tmpCtx.fillStyle = '#FFFFFF'; tmpCtx.fillRect(0, 0, tmpC.width, tmpC.height); } else { tmpCtx.clearRect(0, 0, tmpC.width, tmpC.height); }
+                            tmpCtx.imageSmoothingEnabled = true; tmpCtx.imageSmoothingQuality = 'high';
                             tmpCtx.drawImage(cvs, 0, 0, tmpC.width, tmpC.height);
-                            lastFit = await chk(tmpC, 0.4); scale -= 0.15;
+                            lastFit = await qualitySearch(tmpC); scale -= 0.1;
                         }
                         return res(lastFit);
                     }
@@ -641,6 +760,32 @@
     });
 
     D.btnClose.addEventListener('click', () => { D.modal.classList.remove('active'); outBlobs=[]; });
+
+    /** RESET SETTINGS **/
+    D.btnResetSettings.addEventListener('click', () => {
+        const defaults = {
+            mode: 'merge', showSettings: true,
+            rUnit: 'px', rW: '', rH: '', rLock: true, rPreset: 'custom',
+            pUnit: 'px', pW: '', pH: '', pLock: true,
+            sUnit: 'px', sW: '', sH: '', sLock: true,
+            outFmt: 'jpeg', outDPI: 300, outQual: 90, outTarget: ''
+        };
+        app.settings = {...defaults};
+        app.mode = 'merge';
+        Object.keys(D.inputs).forEach(k => { if(D.inputs[k]) D.inputs[k].value = app.settings[k] ?? ''; });
+        D.locks.rLock.classList.toggle('locked', true);
+        D.locks.pLock.classList.toggle('locked', true);
+        D.locks.sLock.classList.toggle('locked', true);
+        D.modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === 'merge'));
+        D.upResize.style.display = 'none'; D.upResize.classList.remove('active');
+        D.upMerge.style.display = 'grid'; D.upMerge.classList.add('active');
+        D.setResize.style.display = 'none'; D.setResize.classList.remove('active');
+        D.setMerge.style.display = 'block'; D.setMerge.classList.add('active');
+        toggleWorkspacePanels();
+        saveSettings();
+        queuePreview();
+        showToast('Settings reset to defaults');
+    });
 
     /** PERSISTENCE **/
     function saveSettings() { localStorage.setItem('resMergeStudioPref', JSON.stringify(app.settings)); }
